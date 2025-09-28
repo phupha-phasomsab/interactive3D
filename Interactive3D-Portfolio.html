@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Picking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden
+        }
+
+        canvas {
+            display: block
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+</head>
+
+<body>
+    <script>
+        (() => {
+            // --- Scene / Camera / Renderer ---
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+            camera.position.set(0, 1.2, 4);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(innerWidth, innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0.5, 0);
+            controls.enableDamping = true;
+
+            // --- Ground (เส้นกริดช่วยกะระยะ) ---
+            // const grid = new THREE.GridHelper(10, 10, 0x666666, 0x333333);
+            // grid.position.y = -0.001;
+            // scene.add(grid);
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            pmremGenerator.compileEquirectangularShader();
+
+            new THREE.RGBELoader()
+                .setDataType(THREE.UnsignedByteType)
+                .load(
+                    "https://raw.githubusercontent.com/phupha-phasomsab/Asm/main/textures/floor%2Bwall/qwantani_sunset_1k.hdr",
+                    function (texture) {
+                        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+                        scene.background = envMap;    // ✅ ใช้เป็นท้องฟ้า
+                        scene.environment = envMap;   // ✅ ใช้เป็น reflection ของวัสดุ
+
+                        texture.dispose();
+                        pmremGenerator.dispose();
+                    },
+                    undefined,
+                    function (err) {
+                        console.error("HDR load error:", err);
+                    }
+                );
+
+
+            // --- Objects (3 ชิ้น / สีต่างกัน / ไม่ต้องมีไฟเพราะใช้ MeshBasic) ---
+            const clickable = [];
+            let pickobjposition = new THREE.Vector3();
+            let cameraposition = new THREE.Vector3(0.45, 15, 16);
+            function addObj(mesh, pos, name) {
+                mesh.position.copy(pos);
+                mesh.name = name;
+                scene.add(mesh);
+                clickable.push(mesh);
+                return mesh;
+            }
+            addObj(
+                new THREE.Mesh(new THREE.SphereGeometry(0.45, 32, 16), new THREE.MeshBasicMaterial({ color: 0x5dff9b })),
+                new THREE.Vector3(0, 0.45, 0),
+                'Sphere'
+            );
+
+            addObj(
+                new THREE.Mesh(new THREE.ConeGeometry(0.5, 1, 24), new THREE.MeshBasicMaterial({ color: 0x5db6ff })),
+                new THREE.Vector3(2, 0.5, 0),
+                'Cone'
+            );
+            const Cylinder = addObj(
+                new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 24), new THREE.MeshBasicMaterial({ color: 0xffbb00 })),
+                new THREE.Vector3(0, 0.5, -2),
+                'Cylinder'
+            );
+            const loaderScript = document.createElement('script');
+            loaderScript.src = "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js";
+            document.head.appendChild(loaderScript);
+
+            loaderScript.onload = () => {
+                const modelloader = new THREE.GLTFLoader();
+                modelloader.load(
+                    "https://raw.githubusercontent.com/phupha-phasomsab/Asm/main/model/model.glb",
+                    (gltf) => {
+                        const model = gltf.scene;
+                        model.position.set(-2, 0.4, 0); // ตำแหน่งเดียวกับ Box
+                        model.scale.set(2, 2, 2);
+                        model.traverse(child => {
+                            if (child.isMesh) {
+                                child.name = "Box"; // ตั้งชื่อให้ตรงกับ VIEWS
+                                clickable.push(child); // เพิ่มเข้า clickable
+                            }
+                        });
+                        scene.add(model);
+                    }
+                );
+            };
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+            dirLight.position.set(30, 50, 30);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 1;
+            dirLight.shadow.camera.far = 200;
+            dirLight.shadow.camera.left = -100;
+            dirLight.shadow.camera.right = 100;
+            dirLight.shadow.camera.top = 100;
+            dirLight.shadow.camera.bottom = -100;
+            scene.add(dirLight);
+
+            // สร้าง PointLight
+            const pointLight = new THREE.PointLight(0xffaa00, 1, 50);
+            pointLight.castShadow = true;
+            pointLight.shadow.mapSize.width = 1024;
+            pointLight.shadow.mapSize.height = 1024;
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+            // Plane
+            const planeGeo = new THREE.PlaneGeometry(20, 20);
+            const planeMat = new THREE.MeshStandardMaterial({
+                color: 0x808080,   // สีเทา
+                metalness: 1.0,    // โลหะ 100%
+                roughness: 0.3     // ผิวเรียบพอประมาณ
+            });
+            const plane = new THREE.Mesh(planeGeo, planeMat);
+            plane.rotation.x = -Math.PI / 2;
+            plane.receiveShadow = true;
+            plane.position.set(0, 0, 0);
+            plane.scale.set(10, 10, 10);
+            scene.add(plane);
+
+            // --- พรีเซ็ตตำแหน่งกล้องต่อวัตถุ (กำหนดง่าย ๆ) ---
+            const VIEWS = {
+                Box: { pos: new THREE.Vector3(-3, 1.4, 1.6), tar: new THREE.Vector3(-2, 0.4, 0) },
+                Sphere: { pos: new THREE.Vector3(0, 1.8, 3.0), tar: new THREE.Vector3(0, 0.45, 0) },
+                Cone: { pos: new THREE.Vector3(3, 1.6, -2.0), tar: new THREE.Vector3(2, 0.5, 0) },
+                Cylinder: { pos: new THREE.Vector3(0, 1.8, -5, 24), tar: new THREE.Vector3(0, 0.45, -2, 24) }
+            };
+
+            // --- Raycaster + คลิกเพื่อสลับมุม ---
+            const raycaster = new THREE.Raycaster();
+            const pointer = new THREE.Vector2();
+
+            function setPointer(e) {
+                const r = renderer.domElement.getBoundingClientRect();
+                const x = (e.clientX ?? e.touches[0].clientX) - r.left;
+                const y = (e.clientY ?? e.touches[0].clientY) - r.top;
+                pointer.x = (x / r.width) * 2 - 1;
+                pointer.y = -(y / r.height) * 2 + 1;
+            }
+
+            function onPick(e) {
+                setPointer(e);
+                raycaster.setFromCamera(pointer, camera);
+                const hit = raycaster.intersectObjects(clickable, false)[0];
+                if (!hit) return;
+                const view = VIEWS[hit.object.name];
+                cameraposition = view.pos;
+                pickobjposition = hit.object.position;
+                if (!view) return;
+
+                // ย้ายแบบทันที (ถ้าอยากนุ่ม ๆ ค่อยเสริม lerp ทีหลัง)
+                // camera.position.copy(view.pos);
+                // controls.target.copy(view.tar);
+                controls.update();
+            }
+
+
+            renderer.domElement.addEventListener('click', onPick);
+            renderer.domElement.addEventListener('touchend', (e) => { onPick(e); }, { passive: true });
+
+            // --- Resize ---
+            addEventListener('resize', () => {
+                camera.aspect = innerWidth / innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(innerWidth, innerHeight);
+            });
+
+            function lerp(a, b, t) {
+                return a + (b - a) * t;   // t ใน [0..1]
+            }
+            let t = 0;
+            let CylinderTarget = new THREE.Vector3();
+            // --- Loop ---
+            function loop() {
+                t += 0.01;
+                if (t > 1) {
+                    t = 0;
+                    CylinderTarget.x = lerp(-2.0, 2, Math.random());
+                    CylinderTarget.y = 0.5;
+                    CylinderTarget.z = lerp(-2.0, 2, Math.random());
+                }
+                controls.update();
+                // Cylinder.position.x = lerp(-2.0,2,Math.sin(t)+1.0/2);
+                // Cylinder.position.z = lerp(-2.0,2,Math.cos(t)+1.0/2);
+                // Cylinder.rotation.x = lerp(-2.0,2,Math.sin(t)+1.0/2);
+                Cylinder.position.lerp(CylinderTarget, 0.2);
+                controls.target.lerp(pickobjposition, 0.005);
+                camera.position.lerp(cameraposition, 0.005);
+                renderer.render(scene, camera);
+                requestAnimationFrame(loop);
+            }
+            loop();
+        })();
+    </script>
+</body>
+
+</html>
