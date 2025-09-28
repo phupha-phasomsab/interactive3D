@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<title>Three.js GLTF + HDR + Camera UI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:#000;}
+  canvas { display:block;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+</head>
+<body>
+<script>
+(() => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 100);
+    camera.position.set(-8.7,1.5,0.1);
+
+    const renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0,0.5,0);
+    controls.enableDamping = true;
+
+    // Plane
+            const planeGeo = new THREE.PlaneGeometry(50, 50);
+            const planeMat = new THREE.MeshStandardMaterial({
+                color: 0x808080,   // สีเทา
+                metalness: 0,    // โลหะ 100%
+                roughness: 0.5     // ผิวเรียบพอประมาณ
+            });
+    // HDR environment
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    new THREE.RGBELoader()
+        .setDataType(THREE.UnsignedByteType)
+        .load(
+            "https://raw.githubusercontent.com/phupha-phasomsab/Asm/main/textures/floor%2Bwall/qwantani_sunset_1k.hdr",
+            tex => {
+                const env = pmrem.fromEquirectangular(tex).texture;
+                scene.background = env;
+                scene.environment = env;
+                tex.dispose();
+                pmrem.dispose();
+            }
+        );
+
+    // GLTF model
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/cafe.glb",
+        gltf => {
+            const model = gltf.scene;
+            model.position.set(10,0,0);
+            model.rotation.y = Math.PI;
+            scene.add(model);
+        }
+    );
+
+    // Plane
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial({color:0x808080, metalness:1, roughness:0.3}));
+    plane.rotation.x = -Math.PI/2;
+    plane.receiveShadow = true;
+    scene.add(plane);
+
+    // Light
+    scene.add(new THREE.DirectionalLight(0xffffff,1));
+    scene.add(new THREE.PointLight(0xffaa00,1,50).position.set(0,5,0));
+
+    // GUI for camera
+    const gui = new dat.GUI();
+    const camFolder = gui.addFolder('Camera Position');
+    const camParams = {
+        camX: camera.position.x,
+        camY: camera.position.y,
+        camZ: camera.position.z,
+        targetX: controls.target.x,
+        targetY: controls.target.y,
+        targetZ: controls.target.z
+    };
+
+    camFolder.add(camParams,'camX',-50,50).onChange(val=>camera.position.x=val);
+    camFolder.add(camParams,'camY',-50,50).onChange(val=>camera.position.y=val);
+    camFolder.add(camParams,'camZ',-50,50).onChange(val=>camera.position.z=val);
+    camFolder.add(camParams,'targetX',-50,50).onChange(val=>controls.target.x=val);
+    camFolder.add(camParams,'targetY',-50,50).onChange(val=>controls.target.y=val);
+    camFolder.add(camParams,'targetZ',-50,50).onChange(val=>controls.target.z=val);
+    camFolder.open();
+
+    window.addEventListener('resize', ()=>{
+        camera.aspect = window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+function animate(){
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene,camera);
+
+    // Update GUI values
+    camParams.camX = camera.position.x;
+    camParams.camY = camera.position.y;
+    camParams.camZ = camera.position.z;
+    camParams.targetX = controls.target.x;
+    camParams.targetY = controls.target.y;
+    camParams.targetZ = controls.target.z;
+
+    // อัปเดต dat.GUI ให้ UI เปลี่ยนตาม
+    camFolder.__controllers.forEach(controller => controller.updateDisplay());
+}
+    animate();
+})();
+</script>
+</body>
+</html>
