@@ -7,14 +7,76 @@
 <style>
   html, body { margin:0; height:100%; overflow:hidden; background:#000;}
   canvas { display:block;}
+
+  /* labels */
+  .label {
+    position: absolute;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(0,0,0,.8);
+    transform: translate(-50%, -140%); /* ยกขึ้นหน่อยเหนือวัตถุ */
+    white-space: nowrap;
+  }
+
+  /* modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  .modal {
+    background: #121212;
+    color: #fff;
+    width: min(92vw, 520px);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    padding: 20px 20px 16px;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 12px; margin-bottom: 8px;
+  }
+  .modal-title {
+    font-size: 20px; font-weight: 700;
+  }
+  .modal-close {
+    appearance:none; border:none; cursor:pointer;
+    background: rgba(255,255,255,.08);
+    color:#fff; border-radius: 12px; padding: 8px 12px; font-weight:600;
+  }
+  .modal-body {
+    font-size: 14px; line-height: 1.6; color:#e7e7e7;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
 </head>
 <body>
+
+<!-- Modal -->
+<div id="backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal" role="document">
+    <div class="modal-header">
+      <div id="modal-title" class="modal-title">Object Selected</div>
+      <button id="modal-close" class="modal-close" aria-label="close">ปิด</button>
+    </div>
+    <div id="modal-body" class="modal-body">
+      <!-- เนื้อหาจะถูกเติมตอนคลิก -->
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
     const scene = new THREE.Scene();
@@ -30,13 +92,10 @@
     controls.target.set(0,0.5,0);
     controls.enableDamping = true;
 
-    // Plane
-            const planeGeo = new THREE.PlaneGeometry(50, 50);
-            const planeMat = new THREE.MeshStandardMaterial({
-                color: 0x808080,   // สีเทา
-                metalness: 0,    // โลหะ 100%
-                roughness: 0.5     // ผิวเรียบพอประมาณ
-            });
+    // Raycaster & mouse
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
     // HDR environment
     const pmrem = new THREE.PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
@@ -65,15 +124,23 @@
         }
     );
 
-    // Plane
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial({color:0x808080, metalness:1, roughness:0.3}));
+    // Ground
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(20,20),
+      new THREE.MeshStandardMaterial({color:0x808080, metalness:1, roughness:0.3})
+    );
     plane.rotation.x = -Math.PI/2;
     plane.receiveShadow = true;
     scene.add(plane);
 
-    // Light
-    scene.add(new THREE.DirectionalLight(0xffffff,1));
-    scene.add(new THREE.PointLight(0xffaa00,1,50).position.set(0,5,0));
+    // Lights (แก้การ add ให้ถูกต้อง)
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(5,10,5);
+    scene.add(dirLight);
+
+    const ptLight = new THREE.PointLight(0xffaa00, 1, 50);
+    ptLight.position.set(0,5,0);
+    scene.add(ptLight);
 
     // GUI for camera
     const gui = new dat.GUI();
@@ -86,7 +153,6 @@
         targetY: controls.target.y,
         targetZ: controls.target.z
     };
-
     camFolder.add(camParams,'camX',-50,50).onChange(val=>camera.position.x=val);
     camFolder.add(camParams,'camY',-50,50).onChange(val=>camera.position.y=val);
     camFolder.add(camParams,'camZ',-50,50).onChange(val=>camera.position.z=val);
@@ -95,29 +161,168 @@
     camFolder.add(camParams,'targetZ',-50,50).onChange(val=>controls.target.z=val);
     camFolder.open();
 
+    // ===== Objects: Sphere / Box / Cylinder (ตำแหน่ง Default) =====
+    const objects = [];
+
+    const sphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.6,32,32),
+      new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x000000, emissiveIntensity: 1 })
+    );
+    sphere.position.set(-9.7,0.8,-2);
+    scene.add(sphere);
+    objects.push(sphere);
+
+    const box = new THREE.Mesh(
+      new THREE.BoxGeometry(1,1,1),
+      new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x000000, emissiveIntensity: 1 })
+    );
+    box.position.set(-9.7,0.8,2);
+    scene.add(box);
+    objects.push(box);
+
+    const cylinder = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.5,0.5,1.5,32),
+      new THREE.MeshStandardMaterial({ color: 0x0000ff, emissive: 0x000000, emissiveIntensity: 1 })
+    );
+    cylinder.position.set(-9.7,0.8,4);
+    scene.add(cylinder);
+    objects.push(cylinder);
+
+    // ===== Labels =====
+    function createLabel(text, positionRef) {
+        const div = document.createElement('div');
+        div.className = 'label';
+        div.textContent = text;
+        document.body.appendChild(div);
+        return { element: div, positionRef };
+    }
+    const labels = [
+        createLabel('Sphere', sphere.position),
+        createLabel('Box', box.position),
+        createLabel('Cylinder', cylinder.position),
+    ];
+
+    function updateLabels() {
+        labels.forEach(label => {
+            const v = label.positionRef.clone().project(camera);
+            const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+            label.element.style.left = x + 'px';
+            label.element.style.top  = y + 'px';
+        });
+    }
+
+    // ===== Hover Glow =====
+    let hovered = null;
+    function setHoverGlow(obj, on) {
+        if (!obj || !obj.material) return;
+        if (on) {
+            obj.material.emissive.set(0xffff00);
+        } else {
+            obj.material.emissive.set(0x000000);
+        }
+    }
+    window.addEventListener('mousemove', (event) => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(objects);
+        if (hits.length > 0) {
+            const obj = hits[0].object;
+            if (hovered !== obj) {
+                setHoverGlow(hovered, false);
+                hovered = obj;
+                setHoverGlow(hovered, true);
+            }
+        } else {
+            setHoverGlow(hovered, false);
+            hovered = null;
+        }
+    });
+
+    // ===== Smooth Camera Move + Modal on Click =====
+    const infoMap = new Map([
+      [sphere,   { title: 'Sphere Selected',   body: 'วัตถุทรงกลมสีแดง ใช้ความละเอียด 32 ส่วน เหมาะกับการทดสอบวัสดุโลหะ/ผิวมัน' }],
+      [box,      { title: 'Box Selected',      body: 'วัตถุทรงสี่เหลี่ยมลูกบาศก์สีเขียว ขนาด 1×1×1 เหมาะกับการทดสอบ UV และเงา' }],
+      [cylinder, { title: 'Cylinder Selected', body: 'วัตถุทรงกระบอกสีน้ำเงิน รัศมี 0.5 สูง 1.5 เหมาะกับการทดสอบ Normal และ Light' }],
+    ]);
+
+    function smoothLookAt(targetPos) {
+        new TWEEN.Tween(camera.position)
+            .to({ x: targetPos.x + 3, y: targetPos.y + 2, z: targetPos.z + 3 }, 900)
+            .easing(TWEEN.Easing.Quadratic.InOut)
+            .start();
+
+        new TWEEN.Tween(controls.target)
+            .to({ x: targetPos.x, y: targetPos.y, z: targetPos.z }, 900)
+            .easing(TWEEN.Easing.Quadratic.InOut)
+            .start();
+    }
+
+    // Modal helpers
+    const backdrop = document.getElementById('backdrop');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody  = document.getElementById('modal-body');
+    const modalClose = document.getElementById('modal-close');
+
+    function openModal(title, body) {
+        modalTitle.textContent = title || 'Object Selected';
+        modalBody.textContent  = body || '';
+        backdrop.style.display = 'flex';
+        backdrop.setAttribute('aria-hidden', 'false');
+    }
+    function closeModal() {
+        backdrop.style.display = 'none';
+        backdrop.setAttribute('aria-hidden', 'true');
+    }
+    modalClose.addEventListener('click', closeModal);
+    backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
+    window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeModal(); });
+
+    window.addEventListener('click', (event) => {
+        // คำนวณ ray จากตำแหน่งคลิก
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+
+        const hits = raycaster.intersectObjects(objects);
+        if (hits.length > 0) {
+            const obj = hits[0].object;
+            const p = obj.position.clone();
+            smoothLookAt(p);
+
+            const info = infoMap.get(obj);
+            openModal(info?.title, info?.body);
+        }
+    });
+
+    // Render loop
+    function animate(){
+        requestAnimationFrame(animate);
+        controls.update();
+        TWEEN.update();
+        updateLabels();
+        renderer.render(scene,camera);
+
+        // sync GUI
+        camParams.camX = camera.position.x;
+        camParams.camY = camera.position.y;
+        camParams.camZ = camera.position.z;
+        camParams.targetX = controls.target.x;
+        camParams.targetY = controls.target.y;
+        camParams.targetZ = controls.target.z;
+        camFolder.__controllers.forEach(c => c.updateDisplay());
+    }
+    animate();
+
     window.addEventListener('resize', ()=>{
         camera.aspect = window.innerWidth/window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        updateLabels();
     });
 
-function animate(){
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene,camera);
-
-    // Update GUI values
-    camParams.camX = camera.position.x;
-    camParams.camY = camera.position.y;
-    camParams.camZ = camera.position.z;
-    camParams.targetX = controls.target.x;
-    camParams.targetY = controls.target.y;
-    camParams.targetZ = controls.target.z;
-
-    // อัปเดต dat.GUI ให้ UI เปลี่ยนตาม
-    camFolder.__controllers.forEach(controller => controller.updateDisplay());
-}
-    animate();
 })();
 </script>
 </body>
