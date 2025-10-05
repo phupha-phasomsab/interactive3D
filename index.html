@@ -1,426 +1,477 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
-<meta charset="utf-8" />
-<title>Three.js GLTF + HDR + Camera UI + Dialogue Choices</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-  html, body { margin:0; height:100%; overflow:hidden; background:#000;}
-  canvas { display:block;}
+  <meta charset="utf-8" />
+  <title>Three.js GLTF + HDR + Camera UI + Dialogue Choices</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
 
-  /* Dialogue Box */
-  #dialogue-box {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80%;
-    max-width: 600px;
-    background: rgba(0,0,0,0.8);
-    color: white;
-    padding: 20px;
-    border-radius: 12px;
-    font-size: 18px;
-    font-family: "Tahoma", sans-serif;
-    line-height: 1.5;
-    display: none;
-    z-index: 20;
-  }
-  
-  #dialogue-name {
-    font-weight: bold;
-    margin-bottom: 8px;
-    color: #ffcc66;
-  }
-  #dialogue-text {
-    min-height: 50px;
-  }
-  #dialogue-next {
-    margin-top: 10px;
-    text-align: right;
-    font-size: 14px;
-    color: #aaa;
-  }
+    canvas {
+      display: block;
+    }
 
-  /* Choices */
-  #choices {
-    margin-top: 12px;
-  }
-  .choice {
-    background: rgba(255,255,255,0.1);
-    padding: 8px 12px;
-    margin-top: 6px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-  .choice:hover {
-    background: rgba(255,255,255,0.25);
-  }
-
-  /* Text Message */
-  #text {
+    /* Dialogue Box */
+    #dialogue-box {
       position: fixed;
-  top: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: auto;
-  text-align: center;
-  z-index: 15;
-  } 
-  #text p {
-    font-size: 22px;
-    font-family: "Tahoma", sans-serif;
-    opacity: 0;
-    transition: opacity 0.5s;
-    color: black;
-  }
-  #text p.show {
-    opacity: 1;
-  }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      max-width: 600px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-family: "Tahoma", sans-serif;
+      line-height: 1.5;
+      display: none;
+      z-index: 20;
+    }
+
+    #dialogue-name {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #ffcc66;
+    }
+
+    #dialogue-text {
+      min-height: 50px;
+    }
+
+    #dialogue-next {
+      margin-top: 10px;
+      text-align: right;
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    /* Choices */
+    #choices {
+      margin-top: 12px;
+    }
+
+    .choice {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 8px 12px;
+      margin-top: 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .choice:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Text Message */
+    #text {
+      position: fixed;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: auto;
+      text-align: center;
+      z-index: 15;
+    }
+
+    #text p {
+      font-size: 22px;
+      font-family: "Tahoma", sans-serif;
+      opacity: 0;
+      transition: opacity 0.5s;
+      color: black;
+    }
+
+    #text p.show {
+      opacity: 1;
+    }
+
+    /* Back Button */
+    #button-back {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 25;
+    }
+
+    #button-back button {
+      background: gray;
+    }
+
+    #button-back button:hover {
+      background: lightgray;
+      cursor: pointer;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
 </head>
+
 <body>
 
-<!-- Dialogue -->
-<div id="dialogue-box">
-  <div id="dialogue-name"></div>
-  <div id="dialogue-text"></div>
-  <div id="choices"></div>
-  <div id="dialogue-next">กด Space เพื่อไปต่อ...</div>
-</div>
+  <!-- Dialogue -->
+  <div id="dialogue-box">
+    <div id="dialogue-name"></div>
+    <div id="dialogue-text"></div>
+    <div id="choices"></div>
+    <div id="dialogue-next">กด Space เพื่อไปต่อ...</div>
+  </div>
 
-<!-- Text -->
-<div id="text">
-  <p style="display: flex;" ></p>
-</div>
+  <!-- Text -->
+  <div id="text">
+    <p style="display: flex;"></p>
+  </div>
+  <div id="button-back">
+    <button>back To Menu</button>
+  </div>
 
+  <script>
+    (() => {
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(-8.7, 1.5, 0.1);
 
-<script>
-(() => {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 100);
-    camera.position.set(-8.7,1.5,0.1);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      document.body.appendChild(renderer.domElement);
 
-    const renderer = new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    document.body.appendChild(renderer.domElement);
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0.5, 0);
+      controls.enableDamping = true;
 
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.target.set(0,0.5,0);
-    controls.enableDamping = true;
+      // Raycaster & mouse
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
 
-    // Raycaster & mouse
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    // HDR environment
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    new THREE.RGBELoader()
+      // HDR environment
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      new THREE.RGBELoader()
         .setDataType(THREE.UnsignedByteType)
         .load(
-            "https://raw.githubusercontent.com/phupha-phasomsab/Asm/main/textures/floor%2Bwall/qwantani_sunset_1k.hdr",
-            tex => {
-                const env = pmrem.fromEquirectangular(tex).texture;
-                scene.background = env;
-                scene.environment = env;
-                tex.dispose();
-                pmrem.dispose();
-            }
+          "https://raw.githubusercontent.com/phupha-phasomsab/Asm/main/textures/floor%2Bwall/qwantani_sunset_1k.hdr",
+          tex => {
+            const env = pmrem.fromEquirectangular(tex).texture;
+            scene.background = env;
+            scene.environment = env;
+            tex.dispose();
+            pmrem.dispose();
+          }
         );
 
-    // GLTF model
-    const loader = new THREE.GLTFLoader();
-    loader.load(
+      // GLTF model
+      const loader = new THREE.GLTFLoader();
+      loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/cafe.glb",
         gltf => {
-            const model = gltf.scene;
-            model.position.set(10,0,0);
-            model.rotation.y = Math.PI;
-            model.castShadow = true;
-            scene.add(model);
+          const model = gltf.scene;
+          model.position.set(10, 0, 0);
+          model.rotation.y = Math.PI;
+          model.castShadow = true;
+          scene.add(model);
         }
-    );
-    loader.load(
+      );
+      loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text.glb",
         gltf => {
-            const model = gltf.scene;
-            model.scale.set(0.2,0.2,0.2);
-            model.position.set(4.6,2.5,4.9);
-            model.rotation.y = Math.PI;
-            scene.add(model);
+          const model = gltf.scene;
+          model.scale.set(0.2, 0.2, 0.2);
+          model.position.set(4.6, 2.5, 4.9);
+          model.rotation.y = Math.PI;
+          scene.add(model);
         }
-    );
+      );
 
-    // Ground
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(20,20),
-      new THREE.MeshStandardMaterial({color:0x808080, metalness:1, roughness:0.3})
-    );
-    plane.rotation.x = -Math.PI/2;
-    scene.add(plane);
+      // Ground
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(20, 20),
+        new THREE.MeshStandardMaterial({ color: 0x808080, metalness: 1, roughness: 0.3 })
+      );
+      plane.rotation.x = -Math.PI / 2;
+      scene.add(plane);
 
-    // Lights
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(5,10,5);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
+      // Lights
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+      dirLight.position.set(5, 10, 5);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
 
-    scene.add(dirLight);
+      scene.add(dirLight);
 
-    const ptLight = new THREE.PointLight(0xffaa00, 1, 50);
-    ptLight.position.set(0,5,0);
-    scene.add(ptLight);
+      const ptLight = new THREE.PointLight(0xffaa00, 1, 50);
+      ptLight.position.set(0, 5, 0);
+      scene.add(ptLight);
 
-    // GUI for camera
-    const gui = new dat.GUI();
-    const camFolder = gui.addFolder('Camera Position');
-    const camParams = {
+      // GUI for camera
+      const gui = new dat.GUI();
+      const camFolder = gui.addFolder('Camera Position');
+      const camParams = {
         camX: camera.position.x,
         camY: camera.position.y,
         camZ: camera.position.z,
         targetX: controls.target.x,
         targetY: controls.target.y,
         targetZ: controls.target.z
-    };
-    camFolder.add(camParams,'camX',-50,50).onChange(val=>camera.position.x=val);
-    camFolder.add(camParams,'camY',-50,50).onChange(val=>camera.position.y=val);
-    camFolder.add(camParams,'camZ',-50,50).onChange(val=>camera.position.z=val);
-    camFolder.add(camParams,'targetX',-50,50).onChange(val=>controls.target.x=val);
-    camFolder.add(camParams,'targetY',-50,50).onChange(val=>controls.target.y=val);
-    camFolder.add(camParams,'targetZ',-50,50).onChange(val=>controls.target.z=val);
-    camFolder.open();
+      };
+      camFolder.add(camParams, 'camX', -50, 50).onChange(val => camera.position.x = val);
+      camFolder.add(camParams, 'camY', -50, 50).onChange(val => camera.position.y = val);
+      camFolder.add(camParams, 'camZ', -50, 50).onChange(val => camera.position.z = val);
+      camFolder.add(camParams, 'targetX', -50, 50).onChange(val => controls.target.x = val);
+      camFolder.add(camParams, 'targetY', -50, 50).onChange(val => controls.target.y = val);
+      camFolder.add(camParams, 'targetZ', -50, 50).onChange(val => controls.target.z = val);
+      camFolder.open();
 
-    // ===== Objects =====
-    const objects = [];
-    const dialogueMap = new Map();
+      // ===== Objects =====
+      const objects = [];
+      const dialogueMap = new Map();
 
 
-    const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(0.6,32,32),
-      new THREE.MeshStandardMaterial({ color: 0xff0000 })
-    );
-    sphere.position.set(-9.7,0.8,-2);
-    sphere.castShadow = true;
-    sphere.scale.set(0.5,0.5,0.5);
-    scene.add(sphere);
-    objects.push(sphere);
-    dialogueMap.set(sphere, [
-  { name: "Sphere", text: "สวัสดี ฉันคือทรงกลมสีแดง" },
-  { name: "Sphere", text: "คุณอยากถามอะไรฉันไหม?",
-    choices: [
-      { text: "เธอทำอะไรได้บ้าง?", next: [
-        { name: "Sphere", text: "ฉันสามารถหมุนได้รอบตัวเอง" },
-        { name: "Sphere", text: "และยังสะท้อนแสงได้ด้วยนะ!" }
-      ]},
-      { text: "ขอลาไปก่อน", next: [
-        { name: "Sphere", text: "โชคดีนะ แล้วเจอกันใหม่!" }
-      ]}
-    ]
-  }
-]);
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.6, 32, 32),
+        new THREE.MeshStandardMaterial({ color: 0xff0000 })
+      );
+      sphere.position.set(-9.7, 0.8, -2);
+      sphere.castShadow = true;
+      sphere.scale.set(0.5, 0.5, 0.5);
+      scene.add(sphere);
+      objects.push(sphere);
+      dialogueMap.set(sphere, [
+        { name: "Sphere", text: "สวัสดี ฉันคือทรงกลมสีแดง" },
+        {
+          name: "Sphere", text: "คุณอยากถามอะไรฉันไหม?",
+          choices: [
+            {
+              text: "เธอทำอะไรได้บ้าง?", next: [
+                { name: "Sphere", text: "ฉันสามารถหมุนได้รอบตัวเอง" },
+                { name: "Sphere", text: "และยังสะท้อนแสงได้ด้วยนะ!" }
+              ]
+            },
+            {
+              text: "ขอลาไปก่อน", next: [
+                { name: "Sphere", text: "โชคดีนะ แล้วเจอกันใหม่!" }
+              ]
+            }
+          ]
+        }
+      ]);
 
-   loader.load(
-  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Profile.glb",
-  gltf => {
-    ProfileText = gltf.scene;
-    ProfileText.scale.set(0.2,0.2,0.2);
-    ProfileText.position.set(-6.7,1.5,-0.6);
-    ProfileText.rotation.y = Math.PI + 1.6;
-    ProfileText.castShadow = true;
-    scene.add(ProfileText);
+      loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Profile.glb",
+        gltf => {
+          ProfileText = gltf.scene;
+          ProfileText.scale.set(0.2, 0.2, 0.2);
+          ProfileText.position.set(-6.7, 1.5, -0.6);
+          ProfileText.rotation.y = Math.PI + 1.6;
+          ProfileText.castShadow = true;
+          scene.add(ProfileText);
 
-    // เพิ่มทุก mesh ใน ProfileText เข้า objects
-    ProfileText.traverse((child) => {
-      if (child.isMesh) {
-        objects.push(child);
-        dialogueMap.set(child, [
-          { name: "unknow", text: "เฮ้! คุณคลิกที่ profile ของผม!" },
-          { name: "หนึ่ง", text: "สามารถเรียกผมว่าหนึ่งได้นะ" },
-          { name: "หนึ่ง", text: "นี่คือProfileของผม" }
-        ]);
+          // เพิ่มทุก mesh ใน ProfileText เข้า objects
+          ProfileText.traverse((child) => {
+            if (child.isMesh) {
+              objects.push(child);
+              dialogueMap.set(child, [
+                { name: "unknow", text: "เฮ้! คุณคลิกที่ profile ของผม!" },
+                { name: "หนึ่ง", text: "สามารถเรียกผมว่าหนึ่งได้นะ" },
+                { name: "หนึ่ง", text: "นี่คือProfileของผม" }
+              ]);
+            }
+          });
+        }
+      );
+
+      const cylinder = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32),
+        new THREE.MeshStandardMaterial({ color: 0x0000ff })
+      );
+      cylinder.position.set(-6.7, 1, -0.6);
+      cylinder.castShadow = true;
+      cylinder.scale.set(0.5, 0.5, 0.5);
+      scene.add(cylinder);
+      objects.push(cylinder);
+      dialogueMap.set(cylinder, [
+        { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
+        { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" },
+        {
+          name: "Cylinder", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
+          choices: [
+            {
+              text: "ลองหมุนฉัน", next: [
+                { name: "Cylinder", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
+              ]
+            },
+            {
+              text: "ไม่เป็นไร", next: [
+                { name: "Cylinder", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
+              ]
+            }
+          ]
+        }
+      ]);
+      // ===== Smooth Camera Move =====
+      
+      function moveCameraTo(customCamPos, lookAtTarget) {
+        new TWEEN.Tween(camera.position)
+          .to(customCamPos, 900) // customCamPos = {x:, y:, z:}
+          .easing(TWEEN.Easing.Quadratic.InOut)
+          .start();
+
+        new TWEEN.Tween(controls.target)
+          .to(lookAtTarget, 900) // lookAtTarget = {x:, y:, z:}
+          .easing(TWEEN.Easing.Quadratic.InOut)
+          .start();
       }
-    });
-  }
-);
 
-    const cylinder = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.5,0.5,1.5,32),
-      new THREE.MeshStandardMaterial({ color: 0x0000ff })
-    );
-    cylinder.position.set(-6.7,1,-0.6);
-    cylinder.castShadow = true;
-    cylinder.scale.set(0.5,0.5,0.5);
-    scene.add(cylinder);
-    objects.push(cylinder);
-    dialogueMap.set(cylinder, [
-  { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
-  { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" },
-  { name: "Cylinder", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
-    choices: [
-      { text: "ลองหมุนฉัน", next: [
-        { name: "Cylinder", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
-      ]},
-      { text: "ไม่เป็นไร", next: [
-        { name: "Cylinder", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
-      ]}
-    ]
-  }
-]);
-    // ===== Smooth Camera Move =====
-function moveCameraTo(customCamPos, lookAtTarget) {
-    new TWEEN.Tween(camera.position)
-        .to(customCamPos, 900) // customCamPos = {x:, y:, z:}
-        .easing(TWEEN.Easing.Quadratic.InOut)
-        .start();
 
-    new TWEEN.Tween(controls.target)
-        .to(lookAtTarget, 900) // lookAtTarget = {x:, y:, z:}
-        .easing(TWEEN.Easing.Quadratic.InOut)
-        .start();
-}
-    
+      // ===== Dialogue System =====
+      const dialogueBox = document.getElementById("dialogue-box");
+      const dialogueName = document.getElementById("dialogue-name");
+      const dialogueText = document.getElementById("dialogue-text");
+      const dialogueNext = document.getElementById("dialogue-next");
+      const choicesDiv = document.getElementById("choices");
 
-    // ===== Dialogue System =====
-    const dialogueBox = document.getElementById("dialogue-box");
-    const dialogueName = document.getElementById("dialogue-name");
-    const dialogueText = document.getElementById("dialogue-text");
-    const dialogueNext = document.getElementById("dialogue-next");
-    const choicesDiv = document.getElementById("choices");
+      let currentDialogue = [];
+      let currentIndex = 0;
+      let isTyping = false;
+      let typingTimer;
 
-    let currentDialogue = [];
-    let currentIndex = 0;
-    let isTyping = false;
-    let typingTimer;
+      function showDialogue(index) {
+        const d = currentDialogue[index];
+        dialogueBox.style.display = "block";
+        dialogueName.textContent = d.name;
+        dialogueText.textContent = "";
+        choicesDiv.innerHTML = "";
+        dialogueNext.style.display = "block";
 
-    function showDialogue(index){
-      const d = currentDialogue[index];
-      dialogueBox.style.display = "block";
-      dialogueName.textContent = d.name;
-      dialogueText.textContent = "";
-      choicesDiv.innerHTML = "";
-      dialogueNext.style.display = "block";
+        if (d.choices) {
+          dialogueNext.style.display = "none";
+          d.choices.forEach(choice => {
+            const btn = document.createElement("div");
+            btn.className = "choice";
+            btn.textContent = choice.text;
+            btn.onclick = () => {
+              if (choice.next) {
+                startDialogue(choice.next);
+              } else {
+                dialogueBox.style.display = "none";
+              }
+            };
+            choicesDiv.appendChild(btn);
+          });
+        } else {
+          typeText(d.text);
+        }
+      }
 
-      if(d.choices){
-        dialogueNext.style.display = "none";
-        d.choices.forEach(choice=>{
-          const btn = document.createElement("div");
-          btn.className = "choice";
-          btn.textContent = choice.text;
-          btn.onclick = () => {
-            if(choice.next){
-              startDialogue(choice.next);
+      function typeText(text) {
+        let i = 0;
+        isTyping = true;
+        typingTimer = setInterval(() => {
+          dialogueText.textContent += text.charAt(i);
+          i++;
+          if (i >= text.length) {
+            clearInterval(typingTimer);
+            isTyping = false;
+          }
+        }, 40);
+      }
+
+      function startDialogue(dialogues) {
+        currentDialogue = dialogues;
+        currentIndex = 0;
+        showDialogue(currentIndex);
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space" && dialogueBox.style.display === "block") {
+          const d = currentDialogue[currentIndex];
+          if (d.choices) return;
+          if (isTyping) {
+            clearInterval(typingTimer);
+            dialogueText.textContent = d.text;
+            isTyping = false;
+          } else {
+            currentIndex++;
+            if (currentIndex < currentDialogue.length) {
+              showDialogue(currentIndex);
             } else {
               dialogueBox.style.display = "none";
             }
-          };
-          choicesDiv.appendChild(btn);
-        });
-      } else {
-        typeText(d.text);
-      }
-    }
-
-    function typeText(text){
-      let i = 0;
-      isTyping = true;
-      typingTimer = setInterval(()=>{
-        dialogueText.textContent += text.charAt(i);
-        i++;
-        if(i >= text.length){
-          clearInterval(typingTimer);
-          isTyping = false;
-        }
-      }, 40);
-    }
-
-    function startDialogue(dialogues){
-      currentDialogue = dialogues;
-      currentIndex = 0;
-      showDialogue(currentIndex);
-    }
-
-    window.addEventListener("keydown",(e)=>{
-      if(e.code === "Space" && dialogueBox.style.display === "block"){
-        const d = currentDialogue[currentIndex];
-        if(d.choices) return;
-        if(isTyping){ 
-          clearInterval(typingTimer);
-          dialogueText.textContent = d.text;
-          isTyping = false;
-        } else {
-          currentIndex++;
-          if(currentIndex < currentDialogue.length){
-            showDialogue(currentIndex);
-          } else {
-            dialogueBox.style.display = "none";
           }
         }
-      }
-    });
+      });
+      const initialCamPos = { x: -8.7, y: 1.5, z: 0.1 };  // ตำแหน่งกล้องเริ่มต้น
+      const initialTarget = { x: 0, y: 0.5, z: 0 };
+      document.querySelector("#button-back button").addEventListener('click', () => {
+        moveCameraTo(initialCamPos, initialTarget);
+      });
+      // ===== Click Event =====
+      const textElement = document.querySelector("#text p");
 
-    // ===== Click Event =====
-    const textElement = document.querySelector("#text p");
+      window.addEventListener('click', (event) => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
 
-window.addEventListener('click', (event) => {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(objects);
+        if (hits.length > 0) {
+          const obj = hits[0].object;
 
-    const hits = raycaster.intersectObjects(objects);
-    if (hits.length > 0) {
-        const obj = hits[0].object;
-
-        // กำหนดตำแหน่งกล้องเองตรงนี้
-       if (ProfileText && ProfileText.children.includes(obj) || obj === ProfileText) {
-    moveCameraTo(
-        { x: 3.8, y: 3.4, z: 1.39 },
-        { x: 4, y: 3.11, z: 4 }
-    );
-        } else if (obj === sphere) {
+          // กำหนดตำแหน่งกล้องเองตรงนี้
+          if (ProfileText && ProfileText.children.includes(obj) || obj === ProfileText) {
             moveCameraTo(
-                { x: -8, y: 3, z: -2 },
-                { x: -9.7, y: 0.8, z: -2 }
+              { x: 3.8, y: 3.4, z: 1.39 },
+              { x: 4, y: 3.11, z: 4 }
             );
-        }
+          } else if (obj === sphere) {
+            moveCameraTo(
+              { x: -8, y: 3, z: -2 },
+              { x: -9.7, y: 0.8, z: -2 }
+            );
+          }
 
-        const dialogue = dialogueMap.get(obj);
-        if(dialogue){
+          const dialogue = dialogueMap.get(obj);
+          if (dialogue) {
             startDialogue(dialogue);
-        }
+          }
 
-            // === Show text when clicked ===
-            textElement.classList.remove("show");
-            setTimeout(() => {
-              if (obj === ProfileText) {
-                textElement.textContent = "คุณคลิกที่ Profile! นี่คือProfile ของฉัน";
-              } else if (obj === sphere) {
-                textElement.textContent = "คุณคลิกที่ Sphere สีแดงสด!";
-              } else if (obj === cylinder) {
-                textElement.textContent = "คุณคลิกที่ Cylinder สีฟ้า!";
-              } else {
-                textElement.textContent = "";
-              }
-              textElement.classList.add("show");
-            }, 50);
+          // === Show text when clicked ===
+          textElement.classList.remove("show");
+          setTimeout(() => {
+            if (obj === ProfileText) {
+              textElement.textContent = "คุณคลิกที่ Profile! นี่คือProfile ของฉัน";
+            } else if (obj === sphere) {
+              textElement.textContent = "คุณคลิกที่ Sphere สีแดงสด!";
+            } else if (obj === cylinder) {
+              textElement.textContent = "คุณคลิกที่ Cylinder สีฟ้า!";
+            } else {
+              textElement.textContent = "";
+            }
+            textElement.classList.add("show");
+          }, 50);
         }
-    });
+      });
 
-    // Render loop
-    function animate(){
+      // Render loop
+      function animate() {
         requestAnimationFrame(animate);
         controls.update();
         TWEEN.update();
-        renderer.render(scene,camera);
+        renderer.render(scene, camera);
 
         // sync GUI
         camParams.camX = camera.position.x;
@@ -430,16 +481,17 @@ window.addEventListener('click', (event) => {
         camParams.targetY = controls.target.y;
         camParams.targetZ = controls.target.z;
         camFolder.__controllers.forEach(c => c.updateDisplay());
-    }
-    animate();
+      }
+      animate();
 
-    window.addEventListener('resize', ()=>{
-        camera.aspect = window.innerWidth/window.innerHeight;
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+      });
 
-})();
-</script>
+    })();
+  </script>
 </body>
+
 </html>
