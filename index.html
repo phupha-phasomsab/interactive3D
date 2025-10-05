@@ -2,57 +2,82 @@
 <html lang="th">
 <head>
 <meta charset="utf-8" />
-<title>Three.js GLTF + HDR + Camera UI</title>
+<title>Three.js GLTF + HDR + Camera UI + Dialogue Choices</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   html, body { margin:0; height:100%; overflow:hidden; background:#000;}
   canvas { display:block;}
 
-  /* labels */
-  .label {
-    position: absolute;
+  /* Dialogue Box */
+  #dialogue-box {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    max-width: 600px;
+    background: rgba(0,0,0,0.8);
     color: white;
-    font-size: 16px;
+    padding: 20px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-family: "Tahoma", sans-serif;
+    line-height: 1.5;
+    display: none;
+    z-index: 20;
+  }
+  
+  #dialogue-name {
     font-weight: bold;
-    pointer-events: none;
-    text-shadow: 0 0 5px rgba(0,0,0,.8);
-    transform: translate(-50%, -140%); /* ยกขึ้นหน่อยเหนือวัตถุ */
-    white-space: nowrap;
+    margin-bottom: 8px;
+    color: #ffcc66;
+  }
+  #dialogue-text {
+    min-height: 50px;
+  }
+  #dialogue-next {
+    margin-top: 10px;
+    text-align: right;
+    font-size: 14px;
+    color: #aaa;
   }
 
-  /* modal */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.55);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
+  /* Choices */
+  #choices {
+    margin-top: 12px;
   }
-  .modal {
-    background: #121212;
-    color: #fff;
-    width: min(92vw, 520px);
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.6);
-    padding: 20px 20px 16px;
-    border: 1px solid rgba(255,255,255,.08);
+  .choice {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 12px;
+    margin-top: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
   }
-  .modal-header {
-    display:flex; align-items:center; justify-content:space-between;
-    gap: 12px; margin-bottom: 8px;
+  .choice:hover {
+    background: rgba(255,255,255,0.25);
   }
-  .modal-title {
-    font-size: 20px; font-weight: 700;
+
+  /* Text Message */
+  #text {
+      position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  text-align: center;
+  z-index: 15;
+  } 
+  #text p {
+    color: white;
+    font-size: 22px;
+    font-family: "Tahoma", sans-serif;
+    opacity: 0;
+    transition: opacity 0.5s;
+    color: black;
   }
-  .modal-close {
-    appearance:none; border:none; cursor:pointer;
-    background: rgba(255,255,255,.08);
-    color:#fff; border-radius: 12px; padding: 8px 12px; font-weight:600;
-  }
-  .modal-body {
-    font-size: 14px; line-height: 1.6; color:#e7e7e7;
+  #text p.show {
+    opacity: 1;
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -64,18 +89,19 @@
 </head>
 <body>
 
-<!-- Modal -->
-<div id="backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
-  <div class="modal" role="document">
-    <div class="modal-header">
-      <div id="modal-title" class="modal-title">Object Selected</div>
-      <button id="modal-close" class="modal-close" aria-label="close">ปิด</button>
-    </div>
-    <div id="modal-body" class="modal-body">
-      <!-- เนื้อหาจะถูกเติมตอนคลิก -->
-    </div>
-  </div>
+<!-- Dialogue -->
+<div id="dialogue-box">
+  <div id="dialogue-name"></div>
+  <div id="dialogue-text"></div>
+  <div id="choices"></div>
+  <div id="dialogue-next">กด Space เพื่อไปต่อ...</div>
 </div>
+
+<!-- Text -->
+<div id="text">
+  <p style="display: flex;" ></p>
+</div>
+
 
 <script>
 (() => {
@@ -120,6 +146,17 @@
             const model = gltf.scene;
             model.position.set(10,0,0);
             model.rotation.y = Math.PI;
+            model.castShadow = true;
+            scene.add(model);
+        }
+    );
+    loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text.glb",
+        gltf => {
+            const model = gltf.scene;
+            model.scale.set(0.2,0.2,0.2);
+            model.position.set(4.6,2.5,4.9);
+            model.rotation.y = Math.PI;
             scene.add(model);
         }
     );
@@ -130,12 +167,15 @@
       new THREE.MeshStandardMaterial({color:0x808080, metalness:1, roughness:0.3})
     );
     plane.rotation.x = -Math.PI/2;
-    plane.receiveShadow = true;
     scene.add(plane);
 
-    // Lights (แก้การ add ให้ถูกต้อง)
+    // Lights
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
     dirLight.position.set(5,10,5);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+
     scene.add(dirLight);
 
     const ptLight = new THREE.PointLight(0xffaa00, 1, 50);
@@ -161,139 +201,203 @@
     camFolder.add(camParams,'targetZ',-50,50).onChange(val=>controls.target.z=val);
     camFolder.open();
 
-    // ===== Objects: Sphere / Box / Cylinder (ตำแหน่ง Default) =====
+    // ===== Objects =====
     const objects = [];
 
     const sphere = new THREE.Mesh(
       new THREE.SphereGeometry(0.6,32,32),
-      new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0x000000, emissiveIntensity: 1 })
+      new THREE.MeshStandardMaterial({ color: 0xff0000 })
     );
     sphere.position.set(-9.7,0.8,-2);
+    sphere.castShadow = true;
+    sphere.scale.set(0.5,0.5,0.5);
     scene.add(sphere);
     objects.push(sphere);
 
     const box = new THREE.Mesh(
       new THREE.BoxGeometry(1,1,1),
-      new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x000000, emissiveIntensity: 1 })
+      new THREE.MeshStandardMaterial({ color: 0x00ff00 })
     );
-    box.position.set(-9.7,0.8,2);
+    box.position.set(-6.7,1.5,-0.6);
+    box.castShadow = true;
+    box.scale.set(0.5,0.5,0.5);
     scene.add(box);
     objects.push(box);
 
     const cylinder = new THREE.Mesh(
       new THREE.CylinderGeometry(0.5,0.5,1.5,32),
-      new THREE.MeshStandardMaterial({ color: 0x0000ff, emissive: 0x000000, emissiveIntensity: 1 })
+      new THREE.MeshStandardMaterial({ color: 0x0000ff })
     );
-    cylinder.position.set(-9.7,0.8,4);
+    cylinder.position.set(-6.7,1,-0.6);
+    cylinder.castShadow = true;
+    cylinder.scale.set(0.5,0.5,0.5);
     scene.add(cylinder);
     objects.push(cylinder);
+    
+    // ===== Smooth Camera Move =====
+function moveCameraTo(customCamPos, lookAtTarget) {
+    new TWEEN.Tween(camera.position)
+        .to(customCamPos, 900) // customCamPos = {x:, y:, z:}
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .start();
 
-    // ===== Labels =====
-    function createLabel(text, positionRef) {
-        const div = document.createElement('div');
-        div.className = 'label';
-        div.textContent = text;
-        document.body.appendChild(div);
-        return { element: div, positionRef };
-    }
-    const labels = [
-        createLabel('Sphere', sphere.position),
-        createLabel('Box', box.position),
-        createLabel('Cylinder', cylinder.position),
-    ];
+    new TWEEN.Tween(controls.target)
+        .to(lookAtTarget, 900) // lookAtTarget = {x:, y:, z:}
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .start();
+}
+    
 
-    function updateLabels() {
-        labels.forEach(label => {
-            const v = label.positionRef.clone().project(camera);
-            const x = (v.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-            label.element.style.left = x + 'px';
-            label.element.style.top  = y + 'px';
-        });
-    }
+    // ===== Dialogue System =====
+    const dialogueBox = document.getElementById("dialogue-box");
+    const dialogueName = document.getElementById("dialogue-name");
+    const dialogueText = document.getElementById("dialogue-text");
+    const dialogueNext = document.getElementById("dialogue-next");
+    const choicesDiv = document.getElementById("choices");
 
-    // ===== Hover Glow =====
-    let hovered = null;
-    function setHoverGlow(obj, on) {
-        if (!obj || !obj.material) return;
-        if (on) {
-            obj.material.emissive.set(0xffff00);
-        } else {
-            obj.material.emissive.set(0x000000);
-        }
-    }
-    window.addEventListener('mousemove', (event) => {
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    let currentDialogue = [];
+    let currentIndex = 0;
+    let isTyping = false;
+    let typingTimer;
 
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(objects);
-        if (hits.length > 0) {
-            const obj = hits[0].object;
-            if (hovered !== obj) {
-                setHoverGlow(hovered, false);
-                hovered = obj;
-                setHoverGlow(hovered, true);
+    function showDialogue(index){
+      const d = currentDialogue[index];
+      dialogueBox.style.display = "block";
+      dialogueName.textContent = d.name;
+      dialogueText.textContent = "";
+      choicesDiv.innerHTML = "";
+      dialogueNext.style.display = "block";
+
+      if(d.choices){
+        dialogueNext.style.display = "none";
+        d.choices.forEach(choice=>{
+          const btn = document.createElement("div");
+          btn.className = "choice";
+          btn.textContent = choice.text;
+          btn.onclick = () => {
+            if(choice.next){
+              startDialogue(choice.next);
+            } else {
+              dialogueBox.style.display = "none";
             }
-        } else {
-            setHoverGlow(hovered, false);
-            hovered = null;
+          };
+          choicesDiv.appendChild(btn);
+        });
+      } else {
+        typeText(d.text);
+      }
+    }
+
+    function typeText(text){
+      let i = 0;
+      isTyping = true;
+      typingTimer = setInterval(()=>{
+        dialogueText.textContent += text.charAt(i);
+        i++;
+        if(i >= text.length){
+          clearInterval(typingTimer);
+          isTyping = false;
         }
+      }, 40);
+    }
+
+    function startDialogue(dialogues){
+      currentDialogue = dialogues;
+      currentIndex = 0;
+      showDialogue(currentIndex);
+    }
+
+    window.addEventListener("keydown",(e)=>{
+      if(e.code === "Space" && dialogueBox.style.display === "block"){
+        const d = currentDialogue[currentIndex];
+        if(d.choices) return;
+        if(isTyping){ 
+          clearInterval(typingTimer);
+          dialogueText.textContent = d.text;
+          isTyping = false;
+        } else {
+          currentIndex++;
+          if(currentIndex < currentDialogue.length){
+            showDialogue(currentIndex);
+          } else {
+            dialogueBox.style.display = "none";
+          }
+        }
+      }
     });
 
-    // ===== Smooth Camera Move + Modal on Click =====
-    const infoMap = new Map([
-      [sphere,   { title: 'Sphere Selected',   body: 'วัตถุทรงกลมสีแดง ใช้ความละเอียด 32 ส่วน เหมาะกับการทดสอบวัสดุโลหะ/ผิวมัน' }],
-      [box,      { title: 'Box Selected',      body: 'วัตถุทรงสี่เหลี่ยมลูกบาศก์สีเขียว ขนาด 1×1×1 เหมาะกับการทดสอบ UV และเงา' }],
-      [cylinder, { title: 'Cylinder Selected', body: 'วัตถุทรงกระบอกสีน้ำเงิน รัศมี 0.5 สูง 1.5 เหมาะกับการทดสอบ Normal และ Light' }],
+    // ===== Mapping Object → Dialogue =====
+    const dialogueMap = new Map([
+      [sphere, [
+        { name: "Sphere", text: "สวัสดี ฉันคือทรงกลมสีแดง" },
+        { name: "Sphere", text: "คุณอยากถามอะไรฉันไหม?",
+          choices: [
+            { text: "เธอทำอะไรได้บ้าง?", next: [
+              { name: "Sphere", text: "ฉันสามารถหมุนได้รอบตัวเอง" },
+              { name: "Sphere", text: "และยังสะท้อนแสงได้ด้วยนะ!" }
+            ]},
+            { text: "ขอลาไปก่อน", next: [
+              { name: "Sphere", text: "โชคดีนะ แล้วเจอกันใหม่!" }
+            ]}
+          ]
+        }
+      ]],
+      [box, [
+        { name: "unknow", text: "เฮ้! คุณกดมาดูที่ profile ของผม!" },
+        { name: "หนึ่ง", text: "สามารถเรียกผมว่าหนึ่งได้นะ" },
+        { name: "หนึ่ง", text: "นี้คือProfileของผม" },
+        
+      ]],
+      [cylinder, [
+        { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
+        { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" }
+      ]]
     ]);
 
-    function smoothLookAt(targetPos) {
-        new TWEEN.Tween(camera.position)
-            .to({ x: targetPos.x + 3, y: targetPos.y + 2, z: targetPos.z + 3 }, 900)
-            .easing(TWEEN.Easing.Quadratic.InOut)
-            .start();
+    // ===== Click Event =====
+    const textElement = document.querySelector("#text p");
 
-        new TWEEN.Tween(controls.target)
-            .to({ x: targetPos.x, y: targetPos.y, z: targetPos.z }, 900)
-            .easing(TWEEN.Easing.Quadratic.InOut)
-            .start();
-    }
+window.addEventListener('click', (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
 
-    // Modal helpers
-    const backdrop = document.getElementById('backdrop');
-    const modalTitle = document.getElementById('modal-title');
-    const modalBody  = document.getElementById('modal-body');
-    const modalClose = document.getElementById('modal-close');
+    const hits = raycaster.intersectObjects(objects);
+    if (hits.length > 0) {
+        const obj = hits[0].object;
 
-    function openModal(title, body) {
-        modalTitle.textContent = title || 'Object Selected';
-        modalBody.textContent  = body || '';
-        backdrop.style.display = 'flex';
-        backdrop.setAttribute('aria-hidden', 'false');
-    }
-    function closeModal() {
-        backdrop.style.display = 'none';
-        backdrop.setAttribute('aria-hidden', 'true');
-    }
-    modalClose.addEventListener('click', closeModal);
-    backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) closeModal(); });
-    window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeModal(); });
+        // กำหนดตำแหน่งกล้องเองตรงนี้
+        if (obj === box) {
+            moveCameraTo(
+                { x: 3.8, y: 3.4, z: 1.39},   // กล้องจะไปตำแหน่งนี้
+                { x: 4, y: 3.11, z: 4 }   // กล้องจะมองไปตำแหน่งนี้
+            );
+        } else if (obj === sphere) {
+            moveCameraTo(
+                { x: -8, y: 3, z: -2 },
+                { x: -9.7, y: 0.8, z: -2 }
+            );
+        }
 
-    window.addEventListener('click', (event) => {
-        // คำนวณ ray จากตำแหน่งคลิก
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
+        const dialogue = dialogueMap.get(obj);
+        if(dialogue){
+            startDialogue(dialogue);
+        }
 
-        const hits = raycaster.intersectObjects(objects);
-        if (hits.length > 0) {
-            const obj = hits[0].object;
-            const p = obj.position.clone();
-            smoothLookAt(p);
-
-            const info = infoMap.get(obj);
-            openModal(info?.title, info?.body);
+            // === Show text when clicked ===
+            textElement.classList.remove("show");
+            setTimeout(() => {
+              if (obj === box) {
+                textElement.textContent = "คุณคลิกที่ Profile! นี่คือProfile ของฉัน";
+              } else if (obj === sphere) {
+                textElement.textContent = "คุณคลิกที่ Sphere สีแดงสด!";
+              } else if (obj === cylinder) {
+                textElement.textContent = "คุณคลิกที่ Cylinder สีฟ้า!";
+              } else {
+                textElement.textContent = "";
+              }
+              textElement.classList.add("show");
+            }, 50);
         }
     });
 
@@ -302,7 +406,6 @@
         requestAnimationFrame(animate);
         controls.update();
         TWEEN.update();
-        updateLabels();
         renderer.render(scene,camera);
 
         // sync GUI
@@ -320,7 +423,6 @@
         camera.aspect = window.innerWidth/window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-        updateLabels();
     });
 
 })();
