@@ -69,7 +69,6 @@
   z-index: 15;
   } 
   #text p {
-    color: white;
     font-size: 22px;
     font-family: "Tahoma", sans-serif;
     opacity: 0;
@@ -203,6 +202,8 @@
 
     // ===== Objects =====
     const objects = [];
+    const dialogueMap = new Map();
+
 
     const sphere = new THREE.Mesh(
       new THREE.SphereGeometry(0.6,32,32),
@@ -213,16 +214,44 @@
     sphere.scale.set(0.5,0.5,0.5);
     scene.add(sphere);
     objects.push(sphere);
+    dialogueMap.set(sphere, [
+  { name: "Sphere", text: "สวัสดี ฉันคือทรงกลมสีแดง" },
+  { name: "Sphere", text: "คุณอยากถามอะไรฉันไหม?",
+    choices: [
+      { text: "เธอทำอะไรได้บ้าง?", next: [
+        { name: "Sphere", text: "ฉันสามารถหมุนได้รอบตัวเอง" },
+        { name: "Sphere", text: "และยังสะท้อนแสงได้ด้วยนะ!" }
+      ]},
+      { text: "ขอลาไปก่อน", next: [
+        { name: "Sphere", text: "โชคดีนะ แล้วเจอกันใหม่!" }
+      ]}
+    ]
+  }
+]);
 
-    const box = new THREE.Mesh(
-      new THREE.BoxGeometry(1,1,1),
-      new THREE.MeshStandardMaterial({ color: 0x00ff00 })
-    );
-    box.position.set(-6.7,1.5,-0.6);
-    box.castShadow = true;
-    box.scale.set(0.5,0.5,0.5);
-    scene.add(box);
-    objects.push(box);
+   loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Profile.glb",
+  gltf => {
+    ProfileText = gltf.scene;
+    ProfileText.scale.set(0.2,0.2,0.2);
+    ProfileText.position.set(-6.7,1.5,-0.6);
+    ProfileText.rotation.y = Math.PI + 1.6;
+    ProfileText.castShadow = true;
+    scene.add(ProfileText);
+
+    // เพิ่มทุก mesh ใน ProfileText เข้า objects
+    ProfileText.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+        dialogueMap.set(child, [
+          { name: "unknow", text: "เฮ้! คุณคลิกที่ profile ของผม!" },
+          { name: "หนึ่ง", text: "สามารถเรียกผมว่าหนึ่งได้นะ" },
+          { name: "หนึ่ง", text: "นี่คือProfileของผม" }
+        ]);
+      }
+    });
+  }
+);
 
     const cylinder = new THREE.Mesh(
       new THREE.CylinderGeometry(0.5,0.5,1.5,32),
@@ -233,7 +262,20 @@
     cylinder.scale.set(0.5,0.5,0.5);
     scene.add(cylinder);
     objects.push(cylinder);
-    
+    dialogueMap.set(cylinder, [
+  { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
+  { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" },
+  { name: "Cylinder", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
+    choices: [
+      { text: "ลองหมุนฉัน", next: [
+        { name: "Cylinder", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
+      ]},
+      { text: "ไม่เป็นไร", next: [
+        { name: "Cylinder", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
+      ]}
+    ]
+  }
+]);
     // ===== Smooth Camera Move =====
 function moveCameraTo(customCamPos, lookAtTarget) {
     new TWEEN.Tween(camera.position)
@@ -326,34 +368,6 @@ function moveCameraTo(customCamPos, lookAtTarget) {
       }
     });
 
-    // ===== Mapping Object → Dialogue =====
-    const dialogueMap = new Map([
-      [sphere, [
-        { name: "Sphere", text: "สวัสดี ฉันคือทรงกลมสีแดง" },
-        { name: "Sphere", text: "คุณอยากถามอะไรฉันไหม?",
-          choices: [
-            { text: "เธอทำอะไรได้บ้าง?", next: [
-              { name: "Sphere", text: "ฉันสามารถหมุนได้รอบตัวเอง" },
-              { name: "Sphere", text: "และยังสะท้อนแสงได้ด้วยนะ!" }
-            ]},
-            { text: "ขอลาไปก่อน", next: [
-              { name: "Sphere", text: "โชคดีนะ แล้วเจอกันใหม่!" }
-            ]}
-          ]
-        }
-      ]],
-      [box, [
-        { name: "unknow", text: "เฮ้! คุณกดมาดูที่ profile ของผม!" },
-        { name: "หนึ่ง", text: "สามารถเรียกผมว่าหนึ่งได้นะ" },
-        { name: "หนึ่ง", text: "นี้คือProfileของผม" },
-        
-      ]],
-      [cylinder, [
-        { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
-        { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" }
-      ]]
-    ]);
-
     // ===== Click Event =====
     const textElement = document.querySelector("#text p");
 
@@ -367,11 +381,11 @@ window.addEventListener('click', (event) => {
         const obj = hits[0].object;
 
         // กำหนดตำแหน่งกล้องเองตรงนี้
-        if (obj === box) {
-            moveCameraTo(
-                { x: 3.8, y: 3.4, z: 1.39},   // กล้องจะไปตำแหน่งนี้
-                { x: 4, y: 3.11, z: 4 }   // กล้องจะมองไปตำแหน่งนี้
-            );
+       if (ProfileText && ProfileText.children.includes(obj) || obj === ProfileText) {
+    moveCameraTo(
+        { x: 3.8, y: 3.4, z: 1.39 },
+        { x: 4, y: 3.11, z: 4 }
+    );
         } else if (obj === sphere) {
             moveCameraTo(
                 { x: -8, y: 3, z: -2 },
@@ -387,7 +401,7 @@ window.addEventListener('click', (event) => {
             // === Show text when clicked ===
             textElement.classList.remove("show");
             setTimeout(() => {
-              if (obj === box) {
+              if (obj === ProfileText) {
                 textElement.textContent = "คุณคลิกที่ Profile! นี่คือProfile ของฉัน";
               } else if (obj === sphere) {
                 textElement.textContent = "คุณคลิกที่ Sphere สีแดงสด!";
