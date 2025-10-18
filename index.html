@@ -304,7 +304,6 @@ new THREE.RGBELoader(manager)
       // ===== Objects =====
       const objects = [];
       const dialogueMap = new Map();
-
       loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Profile.glb",
         gltf => {
@@ -330,34 +329,6 @@ new THREE.RGBELoader(manager)
         }
       );
 
-      // const cylinder = new THREE.Mesh(
-      //   new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32),
-      //   new THREE.MeshStandardMaterial({ color: 0x0000ff })
-      // );
-      // cylinder.position.set(-6.7, 1, -0.6);
-      // cylinder.castShadow = true;
-      // cylinder.scale.set(0.5, 0.5, 0.5);
-      // scene.add(cylinder);
-      // objects.push(cylinder);
-      // dialogueMap.set(cylinder, [
-      //   { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
-      //   { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" },
-      //   {
-      //     name: "Cylinder", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
-      //     choices: [
-      //       {
-      //         text: "ลองหมุนฉัน", next: [
-      //           { name: "Cylinder", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
-      //         ]
-      //       },
-      //       {
-      //         text: "ไม่เป็นไร", next: [
-      //           { name: "Cylinder", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
-      //         ]
-      //       }
-      //     ]
-      //   }
-      // ]);
       loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Project.glb",
         gltf => {
@@ -371,28 +342,32 @@ new THREE.RGBELoader(manager)
 
           ProjectText.traverse((child) => {
             if (child.isMesh) {
-              objects.push(child);
+              objects.push(child)[
+                dialogueMap.set(child, [
+                  { name: "Project", text: "คุณสามารถกดที่ model ได้นะ" },
+                ])
+              ];
             }
           });
         }
       );
-      loader.load(
-        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Credit.glb",
-        gltf => {
-          CreditText = gltf.scene;
-          CreditText.scale.set(0.2, 0.2, 0.2);
-          CreditText.position.set(-6.7, 0.5, -0.6);
-          CreditText.rotation.y = Math.PI + 1.6;
-          CreditText.castShadow = true;
-          scene.add(CreditText);
+      // loader.load(
+      //   "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Credit.glb",
+      //   gltf => {
+      //     CreditText = gltf.scene;
+      //     CreditText.scale.set(0.2, 0.2, 0.2);
+      //     CreditText.position.set(-6.7, 0.5, -0.6);
+      //     CreditText.rotation.y = Math.PI + 1.6;
+      //     CreditText.castShadow = true;
+      //     scene.add(CreditText);
 
-          CreditText.traverse((child) => {
-            if (child.isMesh) {
-              objects.push(child);
-            }
-          });
-        }
-      );
+      //     CreditText.traverse((child) => {
+      //       if (child.isMesh) {
+      //         objects.push(child);
+      //       }
+      //     });
+      //   }
+      // );
 
       loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Cat.glb",
@@ -420,6 +395,7 @@ new THREE.RGBELoader(manager)
                 { name: "TalkingCat", text: "...." },
                 { name: "TalkingCat", text: "...............?" },
                 { name: "TalkingCat", text: "คุณคลิกที่ฉันเหรอ?" },
+                { name: "TalkingCat", text: "ฉันเป็นตัวแทนของ model แบบ Cel shading นะ" },
                 {
                   name: "TalkingCat", text: "คุณอยากถามอะไรฉันรึเปล่า?",
                   choices: [
@@ -431,8 +407,19 @@ new THREE.RGBELoader(manager)
                       ]
                     },
                     {
+                      text: "เธอชื่ออะไร", next: [
+                        { name: "TalkingCat", text: "ฉันไม่มีชื่อหรอก" },
+                        { name: "น้องแมวเฝ้าร้าน", text: "แต่ถ้าคุณอยากเรียกก็เรียกฉันว่า 'น้องแมวเฝ้าร้าน' ก็ได้" }
+                      ]
+                    },
+                    {
                       text: "ไม่มีอะไรขอตัวก่อน", next: [
                         { name: "TalkingCat", text: "โชคดีนะ แล้วเจอกันใหม่!" }
+                      ]
+                    },
+                    {
+                      text: "Credit", next: [
+                        { name: "TalkingCat", text: "https://sketchfab.com/3d-models/cat-and-books-e460f285564f44e39a045ece018a446f" }
                       ]
                     }
                   ]
@@ -442,7 +429,357 @@ new THREE.RGBELoader(manager)
           });
         }
       );
+      loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Coffee-cup.glb",
+        gltf => {
+          cup = gltf.scene;
+          cup.scale.set(0.2, 0.2, 0.2);
+          cup.position.set(7, 2.69, 2.6);
+          cup.rotation.y = Math.PI + 1.6;
+          cup.castShadow = true;
+          cup.receiveShadow = true;
+          scene.add(cup);
 
+          // เพิ่มทุก mesh ใน ProfileText เข้า objects
+          cup.traverse((child) => {
+            if (child.isMesh) {
+              objects.push(child);
+              dialogueMap.set(child, [
+                { name: "Coffee", text: "เฮ้! คุณคลิกที่ Coffee" },
+                { name: "Coffee", text: "นี่คือถ้วยกาแฟ" },
+                { name: "Coffee", text: "หวังว่าคุณจะชอบมันนะ!" },
+                {
+                  name: "Coffee", text: "คุณอยากถามอะไรฉันรึเปล่า?",
+                  choices: [
+                    {
+                      text: "Credit", next: [
+                        { name: "Coffee", text: "https://sketchfab.com/3d-models/coffee-963a9e5d288c42509886c5efd4fedd3c" },
+                      ]
+                    },
+                  ]
+                }
+                
+              ]);
+            }
+          });
+        }
+      );
+            loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Coffee-maker.glb",
+        gltf => {
+          maker = gltf.scene;
+          maker.scale.set(0.6, 0.6, 0.6);
+          maker.position.set(10.6, 2.69, 4);
+          maker.rotation.y = Math.PI + 1.6;
+          maker.metalness = 0.8;
+          maker.roughness = 0.2;
+          maker.castShadow = true;
+          maker.receiveShadow = true;
+          scene.add(maker);
+
+          // เพิ่มทุก mesh ใน ProfileText เข้า objects
+          maker.traverse((child) => {
+            if (child.isMesh) {
+              objects.push(child);
+              dialogueMap.set(child, [
+                { name: "Coffee-maker", text: "อยากได้กาแฟสักแก้วไหม?" },
+                { name: "Coffee-maker", text: "ฉันสามารถชงกาแฟร้อนๆ ให้คุณได้นะ!" },
+                { name: "Coffee-maker", text: "ฉันเป็นตัวแทนของ PBR material นะ" },
+                {
+                  name: "Coffee-maker", text: "คุณอยากถามอะไรฉันรึเปล่า?",
+                  choices: [
+                    {
+                      text: "Credit", next: [
+                        { name: "Coffee-maker", text: "https://sketchfab.com/3d-models/coffee-maker-383923d4412f4b66937d9c1779a9a0a2" },
+                      ]
+                    },
+                  ]
+                }
+              ]
+            );
+            }
+          });
+        }
+      );
+      
+                  loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/tiramisu.glb",
+        gltf => {
+          tiramisu = gltf.scene;
+          tiramisu.scale.set(0.1, 0.1, 0.1);
+          tiramisu.position.set(7, 2.69, 1.5);
+          tiramisu.rotation.y = Math.PI + 1.6;
+          tiramisu.castShadow = true;
+          tiramisu.receiveShadow = true;
+          scene.add(tiramisu);
+
+          // เพิ่มทุก mesh ใน ProfileText เข้า objects
+          tiramisu.traverse((child) => {
+            if (child.isMesh) {
+              objects.push(child);
+              dialogueMap.set(child, [
+                { name: "tiramisu", text: "tiramisu..." },
+                { name: "tiramisu", text: "...." },
+                { name: "tiramisu", text: "....." },
+                {
+                  name: "Coffee-tiramisu", text: "tiramisu?",
+                  choices: [
+                    {
+                      text: "tiramisu", next: [
+                        { name: "tiramisu", text: "https://sketchfab.com/3d-models/tiramisu-31aad1969a13449798b559939c197885" },
+                      ]
+                    },
+                  ]
+                }
+              ]);
+            }
+          });
+        }
+      );
+loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Back.glb",
+  gltf => {
+     profilenext = gltf.scene;
+    profilenext.scale.set(0.2, 0.2, 0.2);
+    profilenext.position.set(2.8, 2.7, 4.7);
+    profilenext.rotation.y = Math.PI ;
+    profilenext.castShadow = true;
+    profilenext.receiveShadow = true;
+    
+    scene.add(profilenext);
+    profilenext.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+  loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Back.glb",
+  gltf => {
+     tiramisunback = gltf.scene;
+    tiramisunback.scale.set(0.05, 0.05, 0.05);
+    tiramisunback.position.set(6.8, 2.69, 1.4);
+    tiramisunback.rotation.y = Math.PI +1.6;
+    tiramisunback.castShadow = true;
+    tiramisunback.receiveShadow = true;
+    
+    scene.add(tiramisunback);
+    tiramisunback.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+
+    loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Next.glb",
+  gltf => {
+     tiramisunext = gltf.scene;
+    tiramisunext.scale.set(0.05, 0.05, 0.05);
+    tiramisunext.position.set(6.8, 2.69, 1.55);
+    tiramisunext.rotation.y = Math.PI +1.6;
+    tiramisunext.castShadow = true;
+    tiramisunext.receiveShadow = true;
+    
+    scene.add(tiramisunext);
+    tiramisunext.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+    loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Back.glb",
+  gltf => {
+     cupback = gltf.scene;
+    cupback.scale.set(0.05, 0.05, 0.05);
+    cupback.position.set(7, 2.7, 2.4);
+    cupback.rotation.y = Math.PI +1.6;
+    cupback.castShadow = true;
+    cupback.receiveShadow = true;
+    
+    scene.add(cupback);
+    cupback.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+
+    loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Next.glb",
+  gltf => {
+     cupnext = gltf.scene;
+    cupnext.scale.set(0.05, 0.05, 0.05);
+    cupnext.position.set(7, 2.7, 2.7);
+    cupnext.rotation.y = Math.PI +1.6;
+    cupnext.castShadow = true;
+    cupnext.receiveShadow = true;
+    
+    scene.add(cupnext);
+    cupnext.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+      loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Back.glb",
+  gltf => {
+     catback = gltf.scene;
+    catback.scale.set(0.05, 0.05, 0.05);
+    catback.position.set(7, 2.75, 3.9);
+    catback.rotation.y = Math.PI +1.6;
+    catback.castShadow = true;
+    catback.receiveShadow = true;
+    
+    scene.add(catback);
+    catback.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+
+    loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Next.glb",
+  gltf => {
+     catnext = gltf.scene;
+    catnext.scale.set(0.05, 0.05, 0.05);
+    catnext.position.set(7, 2.75, 4.35);
+    catnext.rotation.y = Math.PI +1.6;
+    catnext.castShadow = true;
+    catnext.receiveShadow = true;
+    
+    scene.add(catnext);
+    catnext.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+        loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Back.glb",
+  gltf => {
+     makerback = gltf.scene;
+    makerback.scale.set(0.05, 0.05, 0.05);
+    makerback.position.set(10.6, 2.69,3.5);
+    makerback.rotation.y = Math.PI +1.6;
+    makerback.castShadow = true;
+    makerback.receiveShadow = true;
+    
+    scene.add(makerback);
+    makerback.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+
+    loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Next.glb",
+  gltf => {
+     makernext = gltf.scene;
+    makernext.scale.set(0.05, 0.05, 0.05);
+    makernext.position.set(10.6, 2.69, 4.3);
+    makernext.rotation.y = Math.PI +1.6;
+    makernext.castShadow = true;
+    makernext.receiveShadow = true;
+    
+    scene.add(makernext);
+    makernext.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+          loader.load(
+  "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Back.glb",
+  gltf => {
+     back = gltf.scene;
+    back.scale.set(0.05, 0.05, 0.05);
+    back.position.set(9.7,3.9,3);
+    back.rotation.y = Math.PI +1.6;
+    back.castShadow = true;
+    back.receiveShadow = true;
+    
+    scene.add(back);
+    back.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+      }
+    });
+  });
+// === Vertex Displacement Mesh ===
+const uniformsDisp = {
+  uTime: { value: 0.0 },
+  uHeight: { value: null }
+};
+
+// Shader
+const vertDisp = `
+  uniform sampler2D uHeight;
+  uniform float uTime;
+  varying float vH;
+
+  void main(){
+    vec3 pos = position;
+    float h = texture2D(uHeight, uv).r * sin(uTime + 1.5);
+    pos.z += h * 0.8;       // ดัน vertex ตามค่าความสว่าง
+    vH = h;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+  }
+`;
+
+const fragDisp = `
+  precision mediump float;
+  varying float vH;
+  void main(){
+    // ไล่สีตามค่าความสูง (ฟ้า-ชมพู)
+    gl_FragColor = vec4(0.2+vH, 0.3-vH+0.2, 1.0*vH+0.1, 1.0);
+  }
+`;
+
+// โหลด texture แล้วสร้าง mesh
+new THREE.TextureLoader().load(
+  'https://static.turbosquid.com/Preview/2014/08/01__12_25_23/India.jpg79320326-EB5D-449A-87E31162C98F6B7A.jpgLarger.jpg',
+  tex => {
+    uniformsDisp.uHeight.value = tex;
+
+    const geoDisp = new THREE.PlaneBufferGeometry(4, 2, 200, 200);
+    const matDisp = new THREE.ShaderMaterial({
+      vertexShader: vertDisp,
+      fragmentShader: fragDisp,
+      uniforms: uniformsDisp,
+      side: THREE.DoubleSide
+    });
+
+    const meshDisp = new THREE.Mesh(geoDisp, matDisp);
+    meshDisp.rotation.x = -Math.PI / 2; // หมุนราบถ้าต้องการ
+    meshDisp.position.set(9.3, 3.73, 2.652);   // วางตรงไหนก็ได้ในฉาก
+    meshDisp.scale.set(0.2, 0.1, 0.1);
+    scene.add(meshDisp);
+    meshDisp.traverse((child) => {
+      if (child.isMesh) {
+        objects.push(child);
+        dialogueMap.set(child, [
+                { name: "......", text: "...." },
+                { name: "....", text: "...............?" },
+      ]);
+      }
+    });
+    // เก็บไว้ animate ใน render loop
+    function updateDisplacement() {
+      uniformsDisp.uTime.value += 0.05;
+    }
+
+    // เพิ่มเข้า animation loop หลักของเธอ
+    renderer.setAnimationLoop(() => {
+      updateDisplacement();
+      renderer.render(scene, camera);
+    });
+  }
+);
 
       // ===== Smooth Camera Move =====
 
@@ -565,20 +902,76 @@ new THREE.RGBELoader(manager)
             );
           } else if (isChildOf(ProjectText, obj)) {
             moveCameraTo(
-              { x: -8, y: 3, z: -2 },
-              { x: -9.7, y: 0.8, z: -2 }
+              { x: 5.6 ,y: 3.2, z: 2.702 },
+              { x: 7, y: 3.2, z: 2.8 }
             );
-          } else if (isChildOf(CreditText, obj)) {
-            moveCameraTo(
-              { x: -3.5, y: 2.5, z: 6 },
-              { x: 4.6, y: 2.5, z: 4.9 }
-            );
+          // } else if (isChildOf(CreditText, obj)) {
+          //   moveCameraTo(
+          //     { x: -3.5, y: 2.5, z: 6 },
+          //     { x: 4.6, y: 2.5, z: 4.9 }
+          //   );
           } else if (isChildOf(TalkingCat, obj)) {
             moveCameraTo(
               { x: 6.6, y: 2.8, z: 4 },
               { x: 7, y: 2.79, z: 4 }
             );
-          } else {
+          } else if (isChildOf(cup, obj)) {
+            moveCameraTo(
+              { x: 6.5, y: 2.9, z: 2.633},
+              { x:7, y:2.69, z: 2.6}
+            );
+          } else if (isChildOf(maker, obj)) {
+            moveCameraTo(
+              { x: 9.4, y: 3, z: 4 },
+              { x:10.6 ,y:2.69, z:4}
+            );
+          } else if (isChildOf(tiramisu, obj)) {
+            moveCameraTo(
+              { x: 6.6, y: 2.8, z: 1.5 },
+              { x:7, y:2.69, z: 1.5}
+            );
+          } else if (isChildOf(tiramisunext, obj)) {
+            moveCameraTo(
+              { x: 6.5, y: 2.9, z: 2.633},
+              { x:7, y:2.69, z: 2.6}
+            );
+          } else if (isChildOf(tiramisunback, obj)) {
+            moveCameraTo(
+              { x: 3.8, y: 3.4, z: 1.39 },
+              { x: 4, y: 3.11, z: 4 }
+            );
+          } else if (isChildOf(cupnext, obj)) {
+            moveCameraTo(
+              { x: 9.4, y: 3, z: 4 },
+              { x:10.6 ,y:2.69, z:4}
+            );
+          } else if (isChildOf(cupback, obj)) {
+            moveCameraTo(
+               { x: 6.6, y: 2.8, z: 1.5 },
+              { x:7, y:2.69, z: 1.5}
+            );
+          } else if (isChildOf(catnext, obj)) {
+            moveCameraTo(
+              { x: 8.8, y: 3.8, z: 2.751 },
+              { x:9.3, y:3.73, z: 2.652}
+            );
+          } else if (isChildOf(catback, obj)) {
+            moveCameraTo(
+              { x: 9.4, y: 3, z: 4 },
+              { x:10.6 ,y:2.69, z:4}
+            );
+          } else if (isChildOf(makernext, obj)) {
+            moveCameraTo(
+              { x: 6.6, y: 2.8, z: 4 },
+              { x: 7, y: 2.79, z: 4 }
+            );
+          } else if (isChildOf(makerback, obj)) {
+            moveCameraTo(
+              { x: 6.5, y: 2.9, z: 2.633},
+              { x:7, y:2.69, z: 2.6}
+            );
+          }
+          else {
             moveCameraTo(initialCamPos, initialTarget);
           }
 
