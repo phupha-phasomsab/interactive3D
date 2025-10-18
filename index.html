@@ -95,22 +95,7 @@
       opacity: 1;
     }
 
-    /* Back Button */
-    #button-back {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 25;
-    }
-
-    #button-back button {
-      background: gray;
-    }
-
-    #button-back button:hover {
-      background: lightgray;
-      cursor: pointer;
-    }
+  
   </style>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -134,9 +119,7 @@
   <div id="text">
     <p style="display: flex;"></p>
   </div>
-  <div id="button-back">
-    <button>back To Menu</button>
-  </div>
+
 
   <script>
     (() => {
@@ -294,36 +277,74 @@
         }
       );
 
-      const cylinder = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32),
-        new THREE.MeshStandardMaterial({ color: 0x0000ff })
-      );
-      cylinder.position.set(-6.7, 1, -0.6);
-      cylinder.castShadow = true;
-      cylinder.scale.set(0.5, 0.5, 0.5);
-      scene.add(cylinder);
-      objects.push(cylinder);
-      dialogueMap.set(cylinder, [
-        { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
-        { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" },
-        {
-          name: "Cylinder", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
-          choices: [
-            {
-              text: "ลองหมุนฉัน", next: [
-                { name: "Cylinder", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
-              ]
-            },
-            {
-              text: "ไม่เป็นไร", next: [
-                { name: "Cylinder", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
-              ]
+      // const cylinder = new THREE.Mesh(
+      //   new THREE.CylinderGeometry(0.5, 0.5, 1.5, 32),
+      //   new THREE.MeshStandardMaterial({ color: 0x0000ff })
+      // );
+      // cylinder.position.set(-6.7, 1, -0.6);
+      // cylinder.castShadow = true;
+      // cylinder.scale.set(0.5, 0.5, 0.5);
+      // scene.add(cylinder);
+      // objects.push(cylinder);
+      // dialogueMap.set(cylinder, [
+      //   { name: "Cylinder", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
+      //   { name: "Cylinder", text: "สูง 1.5 รัศมี 0.5" },
+      //   {
+      //     name: "Cylinder", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
+      //     choices: [
+      //       {
+      //         text: "ลองหมุนฉัน", next: [
+      //           { name: "Cylinder", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
+      //         ]
+      //       },
+      //       {
+      //         text: "ไม่เป็นไร", next: [
+      //           { name: "Cylinder", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
+      //         ]
+      //       }
+      //     ]
+      //   }
+      // ]);
+      loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Project.glb",
+        gltf => {
+          ProjectText = gltf.scene;
+          ProjectText.scale.set(0.2, 0.2, 0.2);
+          ProjectText.position.set(-6.7, 1, -0.6);
+          ProjectText.rotation.y = Math.PI + 1.6;
+          ProjectText.castShadow = true;
+          scene.add(ProjectText);
+
+          // เพิ่มทุก mesh ใน ProfileText เข้า objects
+          ProjectText.traverse((child) => {
+            if (child.isMesh) {
+              objects.push(child);
+              dialogueMap.set(child, [
+                { name: "ProjectText", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
+                { name: "ProjectText", text: "สูง 1.5 รัศมี 0.5" },
+                {
+                  name: "ProjectText", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
+                  choices: [
+                    {
+                      text: "ลองหมุนฉัน", next: [
+                        { name: "ProjectText", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
+                      ]
+                    },
+                    {
+                      text: "ไม่เป็นไร", next: [
+                        { name: "ProjectText", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
+                      ]
+                    }
+                  ]
+                }
+              ]);
             }
-          ]
+          });
         }
-      ]);
+      );
+
       // ===== Smooth Camera Move =====
-      
+
       function moveCameraTo(customCamPos, lookAtTarget) {
         new TWEEN.Tween(camera.position)
           .to(customCamPos, 900) // customCamPos = {x:, y:, z:}
@@ -416,9 +437,6 @@
       });
       const initialCamPos = { x: -8.7, y: 1.5, z: 0.1 };  // ตำแหน่งกล้องเริ่มต้น
       const initialTarget = { x: 0, y: 0.5, z: 0 };
-      document.querySelector("#button-back button").addEventListener('click', () => {
-        moveCameraTo(initialCamPos, initialTarget);
-      });
       // ===== Click Event =====
       const textElement = document.querySelector("#text p");
 
@@ -437,12 +455,19 @@
               { x: 3.8, y: 3.4, z: 1.39 },
               { x: 4, y: 3.11, z: 4 }
             );
-          } else if (obj === sphere) {
+            }
+            else if (ProjectText && ProjectText.children.includes(obj) || obj === ProjectText) {
             moveCameraTo(
               { x: -8, y: 3, z: -2 },
               { x: -9.7, y: 0.8, z: -2 }
             );
           }
+          //  else if (obj === sphere) {
+          //   moveCameraTo(
+          //     { x: -8, y: 3, z: -2 },
+          //     { x: -9.7, y: 0.8, z: -2 }
+          //   );
+          // }
 
           const dialogue = dialogueMap.get(obj);
           if (dialogue) {
@@ -454,9 +479,9 @@
           setTimeout(() => {
             if (obj === ProfileText) {
               textElement.textContent = "คุณคลิกที่ Profile! นี่คือProfile ของฉัน";
-            } else if (obj === sphere) {
+            } else if (obj === ProjectText) {
               textElement.textContent = "คุณคลิกที่ Sphere สีแดงสด!";
-            } else if (obj === cylinder) {
+            } else if (obj === sphere) {
               textElement.textContent = "คุณคลิกที่ Cylinder สีฟ้า!";
             } else {
               textElement.textContent = "";
