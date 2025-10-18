@@ -82,9 +82,6 @@
       text-align: center;
       z-index: 15;
     }
-
-
-  
   </style>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -96,6 +93,37 @@
 
 <body>
 
+  <div id="loading-screen" style="
+  position: fixed;
+  top:0; left:0; right:0; bottom:0;
+  background:#000;
+  display:flex;
+  flex-direction: column;
+  justify-content:center;
+  align-items:center;
+  color:#fff;
+  font-family:Tahoma, sans-serif;
+  font-size:18px;
+  z-index:50;
+">
+  กำลังโหลด...
+  <div style="
+    width: 60%;
+    height: 20px;
+    background: #444;
+    border-radius: 10px;
+    margin-top: 10px;
+    overflow: hidden;
+  ">
+    <div id="loading-bar" style="
+      width: 0%;
+      height: 100%;
+      background: #ffcc66;
+      border-radius: 10px;
+    "></div>
+  </div>
+  <div id="loading-percent" style="margin-top:5px;">0%</div>
+</div>
   <!-- Dialogue -->
   <div id="dialogue-box">
     <div id="dialogue-name"></div>
@@ -107,6 +135,47 @@
 
   <script>
     (() => {
+      const loadingScreen = document.getElementById('loading-screen');
+const loadingBar = document.getElementById('loading-bar');
+const loadingPercent = document.getElementById('loading-percent');
+
+// สร้าง LoadingManager
+const manager = new THREE.LoadingManager();
+
+// โหลดเสร็จทั้งหมด
+manager.onLoad = function() {
+  loadingScreen.style.display = 'none'; // ซ่อนหน้าจอโหลด
+};
+
+// โหลดระหว่างทาง
+manager.onProgress = function(url, itemsLoaded, itemsTotal) {
+  const progress = (itemsLoaded / itemsTotal) * 100;
+  loadingBar.style.width = progress + "%";
+  loadingPercent.textContent = Math.round(progress) + "%";
+};
+
+// GLTFLoader ใช้ manager
+const loader = new THREE.GLTFLoader(manager);
+
+// ตัวอย่างโหลดโมเดล
+loader.load("URL_MODEL_1.glb", gltf => {
+  scene.add(gltf.scene);
+});
+
+loader.load("URL_MODEL_2.glb", gltf => {
+  scene.add(gltf.scene);
+});
+
+// RGBELoader ใช้ manager ด้วย
+new THREE.RGBELoader(manager)
+  .setDataType(THREE.UnsignedByteType)
+  .load("URL_HDR.hdr", tex => {
+    const env = pmrem.fromEquirectangular(tex).texture;
+    scene.background = env;
+    scene.environment = env;
+    tex.dispose();
+    pmrem.dispose();
+  });
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
       camera.position.set(-8.7, 1.5, 0.1);
@@ -127,21 +196,42 @@
       // HDR environment
       const pmrem = new THREE.PMREMGenerator(renderer);
       pmrem.compileEquirectangularShader();
+
       new THREE.RGBELoader()
         .setDataType(THREE.UnsignedByteType)
         .load(
           "https://raw.githubusercontent.com/phupha-phasomsab/Asm/main/textures/floor%2Bwall/qwantani_sunset_1k.hdr",
           tex => {
             const env = pmrem.fromEquirectangular(tex).texture;
+
+            // ตั้งค่า environment
             scene.background = env;
             scene.environment = env;
+
+            // ปรับความสว่าง HDR ด้วย envMapIntensity ของวัสดุ
+            const intensityFactor = 0.1; // ลดลงเหลือ 30% ของปกติ
+            scene.traverse(obj => {
+              if (obj.isMesh && obj.material) {
+                // ถ้าวัสดุเป็น array
+                if (Array.isArray(obj.material)) {
+                  obj.material.forEach(mat => {
+                    if (mat.isMeshStandardMaterial) {
+                      mat.envMapIntensity = intensityFactor;
+                      mat.needsUpdate = true;
+                    }
+                  });
+                } else if (obj.material.isMeshStandardMaterial) {
+                  obj.material.envMapIntensity = intensityFactor;
+                  obj.material.needsUpdate = true;
+                }
+              }
+            });
+
             tex.dispose();
             pmrem.dispose();
           }
         );
-
       // GLTF model
-      const loader = new THREE.GLTFLoader();
       loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/cafe.glb",
         gltf => {
@@ -184,20 +274,14 @@
       planeright.position.x = 0;
       planeright.position.z = 9.2;
       scene.add(planeright);
-      // Lights
-      // const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-      // dirLight.position.set(5, 10, 5);
-      // dirLight.castShadow = true;
-      // dirLight.shadow.mapSize.width = 2048;
-      // dirLight.shadow.mapSize.height = 2048;
-
-      // scene.add(dirLight);
-
-      // const ptLight = new THREE.PointLight(0xffaa00, 1, 50);
-      // ptLight.position.set(0, 5, 0);
-      // scene.add(ptLight);
 
 
+      const pointLight = new THREE.PointLight(0xffffff, 1.2, 5);
+      pointLight.position.set(5, 5, 2); // วางด้านซ้าย-บน
+      scene.add(pointLight);
+
+      const ambient = new THREE.AmbientLight(0xffffff, 0.1); // ลด ambient เพื่อให้ shadow ชัด
+      scene.add(ambient);
       // GUI for camera
       const gui = new dat.GUI();
       const camFolder = gui.addFolder('Camera Position');
@@ -220,36 +304,6 @@
       // ===== Objects =====
       const objects = [];
       const dialogueMap = new Map();
-
-
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(0.6, 32, 32),
-        new THREE.MeshStandardMaterial({ color: 0xff0000 })
-      );
-      sphere.position.set(-9.7, 0.8, -2);
-      sphere.castShadow = true;
-      sphere.scale.set(0.5, 0.5, 0.5);
-      scene.add(sphere);
-      objects.push(sphere);
-      dialogueMap.set(sphere, [
-        { name: "Sphere", text: "สวัสดี ฉันคือทรงกลมสีแดง" },
-        {
-          name: "Sphere", text: "คุณอยากถามอะไรฉันไหม?",
-          choices: [
-            {
-              text: "เธอทำอะไรได้บ้าง?", next: [
-                { name: "Sphere", text: "ฉันสามารถหมุนได้รอบตัวเอง" },
-                { name: "Sphere", text: "และยังสะท้อนแสงได้ด้วยนะ!" }
-              ]
-            },
-            {
-              text: "ขอลาไปก่อน", next: [
-                { name: "Sphere", text: "โชคดีนะ แล้วเจอกันใหม่!" }
-              ]
-            }
-          ]
-        }
-      ]);
 
       loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Profile.glb",
@@ -315,7 +369,6 @@
           ProjectText.receiveShadow = true;
           scene.add(ProjectText);
 
-          // เพิ่มทุก mesh ใน ProfileText เข้า objects
           ProjectText.traverse((child) => {
             if (child.isMesh) {
               objects.push(child);
@@ -323,7 +376,7 @@
           });
         }
       );
-            loader.load(
+      loader.load(
         "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Credit.glb",
         gltf => {
           CreditText = gltf.scene;
@@ -333,7 +386,6 @@
           CreditText.castShadow = true;
           scene.add(CreditText);
 
-          // เพิ่มทุก mesh ใน ProfileText เข้า objects
           CreditText.traverse((child) => {
             if (child.isMesh) {
               objects.push(child);
@@ -341,6 +393,56 @@
           });
         }
       );
+
+      loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Cat.glb",
+        gltf => {
+          TalkingCat = gltf.scene;
+          TalkingCat.scale.set(0.05, 0.05, 0.05);
+          TalkingCat.position.set(7, 2.69, 4.167);
+          TalkingCat.traverse((child) => {
+            if (child.isMesh) {
+              child.material = new THREE.MeshToonMaterial({
+                map: child.material.map, // ถ้ามี texture เดิม
+                color: 0xffffff          // สีพื้น
+              });
+            }
+          });
+
+          TalkingCat.castShadow = true;
+          scene.add(TalkingCat);
+
+          // เพิ่มลง objects + dialogueMap
+          TalkingCat.traverse((child) => {
+            if (child.isMesh) {
+              objects.push(child);
+              dialogueMap.set(child, [
+                { name: "TalkingCat", text: "...." },
+                { name: "TalkingCat", text: "...............?" },
+                { name: "TalkingCat", text: "คุณคลิกที่ฉันเหรอ?" },
+                {
+                  name: "TalkingCat", text: "คุณอยากถามอะไรฉันรึเปล่า?",
+                  choices: [
+                    {
+                      text: "เธอทำอะไรตรงนี้", next: [
+                        { name: "TalkingCat", text: "ฉันเฝ้ารา้นแทนเจ้าของร้านนะ" },
+                        { name: "TalkingCat", text: "ถึงแม้จะนอนอยู่ก็เถอะ" },
+                        { name: "TalkingCat", text: "ถ้าไม่มีอะไรแล้วขอกลับไปนอนต่อนะ เมี๊ยว" }
+                      ]
+                    },
+                    {
+                      text: "ไม่มีอะไรขอตัวก่อน", next: [
+                        { name: "TalkingCat", text: "โชคดีนะ แล้วเจอกันใหม่!" }
+                      ]
+                    }
+                  ]
+                }
+              ]);
+            }
+          });
+        }
+      );
+
 
       // ===== Smooth Camera Move =====
 
@@ -436,6 +538,15 @@
       });
       const initialCamPos = { x: -8.7, y: 1.5, z: 0.1 };  // ตำแหน่งกล้องเริ่มต้น
       const initialTarget = { x: 0, y: 0.5, z: 0 };
+      function isChildOf(parent, child) {
+        if (!parent || !child) return false;
+        if (parent === child) return true;
+        let found = false;
+        parent.traverse((c) => {
+          if (c === child) found = true;
+        });
+        return found;
+      }
       // ===== Click Event =====
       window.addEventListener('click', (event) => {
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -447,30 +558,29 @@
           const obj = hits[0].object;
 
           // กำหนดตำแหน่งกล้องเองตรงนี้
-          if (ProfileText && ProfileText.children.includes(obj) || obj === ProfileText) {
+          if (isChildOf(ProfileText, obj)) {
             moveCameraTo(
               { x: 3.8, y: 3.4, z: 1.39 },
               { x: 4, y: 3.11, z: 4 }
             );
-            }
-            else if (ProjectText && ProjectText.children.includes(obj) || obj === ProjectText) {
+          } else if (isChildOf(ProjectText, obj)) {
             moveCameraTo(
               { x: -8, y: 3, z: -2 },
               { x: -9.7, y: 0.8, z: -2 }
             );
-          }
-            else if (CreditText && CreditText.children.includes(obj) || obj === CreditText) {
+          } else if (isChildOf(CreditText, obj)) {
             moveCameraTo(
               { x: -3.5, y: 2.5, z: 6 },
               { x: 4.6, y: 2.5, z: 4.9 }
             );
-            }
-          //  else if (obj === sphere) {
-          //   moveCameraTo(
-          //     { x: -8, y: 3, z: -2 },
-          //     { x: -9.7, y: 0.8, z: -2 }
-          //   );
-          // }
+          } else if (isChildOf(TalkingCat, obj)) {
+            moveCameraTo(
+              { x: 6.6, y: 2.8, z: 4 },
+              { x: 7, y: 2.79, z: 4 }
+            );
+          } else {
+            moveCameraTo(initialCamPos, initialTarget);
+          }
 
           const dialogue = dialogueMap.get(obj);
           if (dialogue) {
