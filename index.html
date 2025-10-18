@@ -83,17 +83,6 @@
       z-index: 15;
     }
 
-    #text p {
-      font-size: 22px;
-      font-family: "Tahoma", sans-serif;
-      opacity: 0;
-      transition: opacity 0.5s;
-      color: black;
-    }
-
-    #text p.show {
-      opacity: 1;
-    }
 
   
   </style>
@@ -113,11 +102,6 @@
     <div id="dialogue-text"></div>
     <div id="choices"></div>
     <div id="dialogue-next">กด Space เพื่อไปต่อ...</div>
-  </div>
-
-  <!-- Text -->
-  <div id="text">
-    <p style="display: flex;"></p>
   </div>
 
 
@@ -164,6 +148,7 @@
           const model = gltf.scene;
           model.position.set(10, 0, 0);
           model.rotation.y = Math.PI;
+          model.receiveShadow = true;
           model.castShadow = true;
           scene.add(model);
         }
@@ -180,25 +165,38 @@
       );
 
       // Ground
-      const plane = new THREE.Mesh(
-        new THREE.PlaneGeometry(20, 20),
+      const planeleft = new THREE.Mesh(
+        new THREE.PlaneGeometry(15, 8),
         new THREE.MeshStandardMaterial({ color: 0x808080, metalness: 1, roughness: 0.3 })
       );
-      plane.rotation.x = -Math.PI / 2;
-      scene.add(plane);
+      planeleft.rotation.x = -Math.PI / 2;
+      planeleft.position.y = 0.18;
+      planeleft.position.x = 0;
+      planeleft.position.z = -7.9;
+      scene.add(planeleft);
 
+      const planeright = new THREE.Mesh(
+        new THREE.PlaneGeometry(15, 8),
+        new THREE.MeshStandardMaterial({ color: 0x808080, metalness: 1, roughness: 0.3 })
+      );
+      planeright.rotation.x = -Math.PI / 2;
+      planeright.position.y = 0.18;
+      planeright.position.x = 0;
+      planeright.position.z = 9.2;
+      scene.add(planeright);
       // Lights
-      const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-      dirLight.position.set(5, 10, 5);
-      dirLight.castShadow = true;
-      dirLight.shadow.mapSize.width = 2048;
-      dirLight.shadow.mapSize.height = 2048;
+      // const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+      // dirLight.position.set(5, 10, 5);
+      // dirLight.castShadow = true;
+      // dirLight.shadow.mapSize.width = 2048;
+      // dirLight.shadow.mapSize.height = 2048;
 
-      scene.add(dirLight);
+      // scene.add(dirLight);
 
-      const ptLight = new THREE.PointLight(0xffaa00, 1, 50);
-      ptLight.position.set(0, 5, 0);
-      scene.add(ptLight);
+      // const ptLight = new THREE.PointLight(0xffaa00, 1, 50);
+      // ptLight.position.set(0, 5, 0);
+      // scene.add(ptLight);
+
 
       // GUI for camera
       const gui = new dat.GUI();
@@ -261,6 +259,7 @@
           ProfileText.position.set(-6.7, 1.5, -0.6);
           ProfileText.rotation.y = Math.PI + 1.6;
           ProfileText.castShadow = true;
+          ProfileText.receiveShadow = true;
           scene.add(ProfileText);
 
           // เพิ่มทุก mesh ใน ProfileText เข้า objects
@@ -313,31 +312,31 @@
           ProjectText.position.set(-6.7, 1, -0.6);
           ProjectText.rotation.y = Math.PI + 1.6;
           ProjectText.castShadow = true;
+          ProjectText.receiveShadow = true;
           scene.add(ProjectText);
 
           // เพิ่มทุก mesh ใน ProfileText เข้า objects
           ProjectText.traverse((child) => {
             if (child.isMesh) {
               objects.push(child);
-              dialogueMap.set(child, [
-                { name: "ProjectText", text: "ฉันคือทรงกระบอกสีน้ำเงิน" },
-                { name: "ProjectText", text: "สูง 1.5 รัศมี 0.5" },
-                {
-                  name: "ProjectText", text: "คุณอยากทดสอบอะไรกับฉันไหม?",
-                  choices: [
-                    {
-                      text: "ลองหมุนฉัน", next: [
-                        { name: "ProjectText", text: "โอเค! ฉันหมุนรอบตัวเองได้!" }
-                      ]
-                    },
-                    {
-                      text: "ไม่เป็นไร", next: [
-                        { name: "ProjectText", text: "ก็ได้ งั้นไว้เจอกันใหม่!" }
-                      ]
-                    }
-                  ]
-                }
-              ]);
+            }
+          });
+        }
+      );
+            loader.load(
+        "https://raw.githubusercontent.com/phupha-phasomsab/interactive3D/main/Model/Text-Credit.glb",
+        gltf => {
+          CreditText = gltf.scene;
+          CreditText.scale.set(0.2, 0.2, 0.2);
+          CreditText.position.set(-6.7, 0.5, -0.6);
+          CreditText.rotation.y = Math.PI + 1.6;
+          CreditText.castShadow = true;
+          scene.add(CreditText);
+
+          // เพิ่มทุก mesh ใน ProfileText เข้า objects
+          CreditText.traverse((child) => {
+            if (child.isMesh) {
+              objects.push(child);
             }
           });
         }
@@ -438,8 +437,6 @@
       const initialCamPos = { x: -8.7, y: 1.5, z: 0.1 };  // ตำแหน่งกล้องเริ่มต้น
       const initialTarget = { x: 0, y: 0.5, z: 0 };
       // ===== Click Event =====
-      const textElement = document.querySelector("#text p");
-
       window.addEventListener('click', (event) => {
         mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -462,6 +459,12 @@
               { x: -9.7, y: 0.8, z: -2 }
             );
           }
+            else if (CreditText && CreditText.children.includes(obj) || obj === CreditText) {
+            moveCameraTo(
+              { x: -3.5, y: 2.5, z: 6 },
+              { x: 4.6, y: 2.5, z: 4.9 }
+            );
+            }
           //  else if (obj === sphere) {
           //   moveCameraTo(
           //     { x: -8, y: 3, z: -2 },
@@ -474,20 +477,6 @@
             startDialogue(dialogue);
           }
 
-          // === Show text when clicked ===
-          textElement.classList.remove("show");
-          setTimeout(() => {
-            if (obj === ProfileText) {
-              textElement.textContent = "คุณคลิกที่ Profile! นี่คือProfile ของฉัน";
-            } else if (obj === ProjectText) {
-              textElement.textContent = "คุณคลิกที่ Sphere สีแดงสด!";
-            } else if (obj === sphere) {
-              textElement.textContent = "คุณคลิกที่ Cylinder สีฟ้า!";
-            } else {
-              textElement.textContent = "";
-            }
-            textElement.classList.add("show");
-          }, 50);
         }
       });
 
